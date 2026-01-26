@@ -1,0 +1,20 @@
+# General
+numpy>=1.26,<2.0
+pandas>=2.1,<3.0
+
+# Data retrieval
+wrds>=3.2
+sqlalchemy>=2.0,<3.0
+psycopg2-binary>=2.9
+
+# Modelling
+scipy>=1.11,<2.0
+statsmodels>=0.14,<1.0
+
+# Plotting
+matplotlib>=3.8,<4.0
+# seaborn>=0.13,<1.0
+
+# Jupyter
+jupyter>=1.0
+ipykernel>=6.25

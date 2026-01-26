@@ -1,0 +1,16 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Raw and processed data
+data/raw/
+data/processed/
+!data/portfolios/
+
+# Secrets / credentials
+.env
+keys.py

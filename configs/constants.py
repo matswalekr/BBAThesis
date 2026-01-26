@@ -1,0 +1,10 @@
+# Constants are those values that remain fixed and are essential to ensure the program runs.
+# They may not change based on different configurations or builds.
+
+# 1. Factor model constants
+# Source: Kenneth R. French Data Library (https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html)
+# Name of the library in pandas datareader
+FACTORS_LIB: str = "F-F_Research_Data_5_Factors_2x3"
+
+# Name of the data source within the library
+FACTORS_DATA_SOURCE: str = "famafrench"
