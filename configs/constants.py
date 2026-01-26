@@ -1,4 +1,4 @@
-# Constants are those values that remain fixed and are essential to ensure the program runs.
+# Constants are those values that remain fixed and are essential to ensure the program runs.
 # They may not change based on different configurations or builds.
 
 # 1. Factor model constants
