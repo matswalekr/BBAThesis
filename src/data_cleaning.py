@@ -4,8 +4,9 @@ from typing import Tuple
 # Import the configurations
 from configs import CONFIG, CONFIGURATION, FILENAMES
 
+type ALL_DATA = Tuple[pd.DataFrame, pd.DataFrame,pd.DataFrame, pd.DataFrame,pd.DataFrame]
 
-def download_raw_data(config: CONFIGURATION) -> Tuple[pd.DataFrame]:
+def download_raw_data(config: CONFIGURATION) -> ALL_DATA:
     """
     Function to download all of the raw data.
 
@@ -16,8 +17,13 @@ def download_raw_data(config: CONFIGURATION) -> Tuple[pd.DataFrame]:
 
     Returns
     ------
-    Tuple[pd.DataFrame]
-        The different raw dataframes"""
+    ALL_DATA
+        The 5 different raw dataframes
+        - factors_monthly_raw
+        - factors_yearly_raw
+        - stock_prices_raw
+        - firm_info_raw
+        - sic_desc_raw"""
 
     factors_monthly_raw: pd.DataFrame = pd.read_csv(
         config.paths.raw_read(FILENAMES.FF5_factors_monthly),
@@ -204,7 +210,7 @@ def intersect_stockprices_monthlyfactors(
     """
 
     # Create full calendar-day index from min to max date
-    full_idx: pd.datetimeIndex = pd.date_range(
+    full_idx: pd.DatetimeIndex = pd.date_range(
         stock_prices_cleaned["date"].min(),
         factors_monthly_processed.index.max(),
         freq="D",
@@ -314,7 +320,7 @@ def save_processed_data(
     return
 
 
-def clean_data(config: CONFIGURATION) -> Tuple[pd.DataFrame]:
+def clean_data(config: CONFIGURATION) -> ALL_DATA:
     """
     Function to clean all of the data.
 
@@ -381,7 +387,7 @@ def clean_save_data(config: CONFIGURATION) -> None:
         factors_yearly_processed,
         stock_prices_intersected,
         firm_info_processed,
-        sic_desc_processed,
+        sic_desc_processed
     ) = clean_data(config)
 
     save_processed_data(
@@ -390,7 +396,7 @@ def clean_save_data(config: CONFIGURATION) -> None:
         stock_prices_intersected,
         firm_info_processed,
         sic_desc_processed,
-        config,
+        config
     )
 
 

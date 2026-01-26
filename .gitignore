@@ -3,8 +3,9 @@ __pycache__/
 *.pyc
 *.pyo
 
-# Jupyter
+# Jupyter & pyproject files
 .ipynb_checkpoints/
+pyproject.toml
 
 # Raw and processed data
 data/raw/

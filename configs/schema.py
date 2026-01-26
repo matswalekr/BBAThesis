@@ -1,6 +1,6 @@
 import datetime as dt
 from dataclasses import dataclass
-from typing import Literal, Optional, Iterable, Union, List, Dict
+from typing import Literal, Optional, Sequence, Union, List, Dict
 import pandas as pd
 from pathlib import Path
 import re
@@ -251,8 +251,8 @@ class CONFIGURATION:
     paths: PATH_CONFIG
 
     # WRDS login
-    WRDS_USERNAME: str
-    WRDS_PASSWORD: str
+    WRDS_USERNAME: Optional[str]
+    WRDS_PASSWORD: Optional[str]
 
     # Constants
     FACTORS_LIB: str
@@ -272,7 +272,7 @@ class CONFIGURATION:
     PORTFOLIO_AGGREGATION_METHOD: Literal["MarketCap", "Equal"]
 
     # Model configurations
-    BREAK_DATE_PERIODS: Optional[Iterable[dt.datetime]]
+    BREAK_DATE_PERIODS: Optional[Sequence[dt.datetime]]
     INCLUDE_END_DATE_PERIOD: bool
     INCLUDE_START_DATE_PERIOD: bool
     PERIOD_WINDOW_LENGTH_MONTHS: Optional[int]
@@ -330,7 +330,14 @@ class CONFIGURATION:
             raise ValueError(
                 "THRESHOLD_MISSING_SHARESOUTSTANDING must be between 0 and 1"
             )
+    
+        if self.WRDS_USERNAME is None:
+            raise ValueError(
+                "WRDS Username is not provided. Please provide this in a .env file to access the database"
+            )
 
+        if self.WRDS_PASSWORD is None:
+            pass # As this is not provided, it is not necessarily a problem
 
 # Plotting configurations
 @dataclass(frozen=True, slots=True)

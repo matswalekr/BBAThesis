@@ -33,35 +33,35 @@ PATHCONFIG = PATH_CONFIG(
 class FILENAMES_ANALYSIS(StrEnum):
 
     # Portfolio Info
-    Portfolio_returns: str = "portfolio_returns_monthly"
-    Portfolio_construction_details: str = "portfolio_construction_details"
+    Portfolio_returns = "portfolio_returns_monthly"
+    Portfolio_construction_details = "portfolio_construction_details"
 
     # Model outcomes
-    Comp_pred_actual_portfolio: str = "factor_model_predictions_monthly_obs_universe"
-    Factor_loadings_monthly: str = "factor_loadings_monthly_portfolios"
-    Factor_loadings_differentperiods: str = "factor_loadings_overtime_portfolios"
+    Comp_pred_actual_portfolio = "factor_model_predictions_monthly_obs_universe"
+    Factor_loadings_monthly = "factor_loadings_monthly_portfolios"
+    Factor_loadings_differentperiods = "factor_loadings_overtime_portfolios"
 
 
 # Enum for all pathnames
 class FILENAMES(StrEnum):
     # Fama French Files
-    FF5_factors_monthly: str = "fama_french_monthly_factors"
-    FF5_factors_yearly: str = "fama_french_yearly_factors"
+    FF5_factors_monthly = "fama_french_monthly_factors"
+    FF5_factors_yearly  = "fama_french_yearly_factors"
 
     # Stock info files
-    Stock_prices: str = "stock_prices_wrds_monthly_obs_universe"
+    Stock_prices = "stock_prices_wrds_monthly_obs_universe"
 
     # Firm info
-    Firm_info: str = "firm_info_wrds"
+    Firm_info = "firm_info_wrds"
 
     # Sic Description
-    Sic_description: str = "sic_description"
+    Sic_description = "sic_description"
 
     # Portfolio Info
-    Portfolio_returns: str = "portfolio_returns_monthly"
-    Portfolio_construction_details: str = "portfolio_construction_details"
+    Portfolio_returns = "portfolio_returns_monthly"
+    Portfolio_construction_details = "portfolio_construction_details"
 
     # Model outcomes
-    Comp_pred_actual_portfolio: str = "factor_model_predictions_monthly_obs_universe"
-    Factor_loadings_monthly: str = "factor_loadings_monthly_portfolios"
-    Factor_loadings_differentperiods: str = "factor_loadings_overtime_portfolios"
+    Comp_pred_actual_portfolio = "factor_model_predictions_monthly_obs_universe"
+    Factor_loadings_monthly = "factor_loadings_monthly_portfolios"
+    Factor_loadings_differentperiods = "factor_loadings_overtime_portfolios"

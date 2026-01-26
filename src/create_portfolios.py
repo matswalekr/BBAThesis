@@ -251,8 +251,8 @@ def get_portfolio_constitution(portfolio_df: pd.DataFrame) -> pd.DataFrame:
     group_totals: pd.Series = final_portfolio_constitution.groupby(level=0)[
         "market_cap"
     ].sum()
-    group_key: pd.Series = final_portfolio_constitution.index.get_level_values(0).map(
-        group_totals
+    group_key: pd.Index = final_portfolio_constitution.index.get_level_values(0).map(
+        group_totals.to_dict()
     )
 
     sorted_main_portfolios = (
