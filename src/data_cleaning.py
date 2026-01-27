@@ -85,8 +85,11 @@ def clean_factors(
     Tuple[pd.DataFrame,pd.DataFrame]
         Cleaned monthly and yearly factor data
     """
-    factors_monthly_raw_decimal = factors_monthly_raw / 100
-    factors_yearly_raw_decimal = factors_yearly_raw / 100
+    factors_monthly_raw_newindex: pd.DataFrame = factors_monthly_raw.rename_axis("date", axis="index")
+    factors_yearly_raw_newindex: pd.DataFrame = factors_yearly_raw.rename_axis("date", axis="index")
+
+    factors_monthly_raw_decimal = factors_monthly_raw_newindex / 100
+    factors_yearly_raw_decimal = factors_yearly_raw_newindex / 100
 
     return factors_monthly_raw_decimal, factors_yearly_raw_decimal
 
