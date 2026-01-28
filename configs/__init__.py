@@ -1,5 +1,5 @@
 # src/configs/__init__.py
-from .configurations import CONFIG, PLOTTING_CONFIG
+from .configurations import CONFIG, PLOTTING_CONFIG, PLOTTING_CONFIGURATIONS
 from .paths import ANALYSIS_PATHS, FILENAMES, FILENAMES_ANALYSIS
 from .schema import CONFIGURATION
 

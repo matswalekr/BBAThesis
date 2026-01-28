@@ -1,9 +1,7 @@
-from .portfolios import plot_dashboard_pred_vs_actual_prices, plot_factor_loadings, compare_factor_loadings, compare_factor_loadings_small_large, plot_factor_loadings_over_time
+from .plotting import PLOTTER
+from .utils import import_plotting_data
 
 __all__ = [
-    "plot_dashboard_pred_vs_actual_prices",
-    "plot_factor_loadings",
-    "compare_factor_loadings",
-    "compare_factor_loadings_small_large",
-    "plot_factor_loadings_over_time"
+    "PLOTTER",
+    "import_plotting_data"
 ]
