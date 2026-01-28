@@ -2,14 +2,18 @@ import pandas as pd
 import datetime as dt 
 import matplotlib.pyplot as plt
 import numpy as np
-from typing import List, Union, Literal
+from typing import List, Union, Literal, Tuple, Optional
 from configs import PLOTTING_CONFIGURATIONS
 from matplotlib import cycler
 from .style import set_plot_style
 
 class PLOTTER():
-    def __init__(self, config: PLOTTING_CONFIGURATIONS)->None:
+    def __init__(self, 
+        config: PLOTTING_CONFIGURATIONS, 
+        figsize: Optional[Tuple[int, int]] = None
+    )->None:
         self.config: PLOTTING_CONFIGURATIONS = config
+        self.figsize = figsize if figsize is not None else (10,6)
         set_plot_style()
 
 
@@ -78,7 +82,7 @@ class PLOTTER():
         # Set-up the plots
         fig, (ax1, ax2, ax3) = plt.subplots(3, 1, 
                                             sharex=False, 
-                                            figsize=(10, 5),
+                                            figsize=self.figsize,
                                             gridspec_kw={"hspace": 1.0})
         
         fontsize_subheader: float  = 12.0
@@ -201,7 +205,7 @@ class PLOTTER():
         xpos = np.arange(len(factors_to_plot))
         
         # Plot the data
-        fig, ax = plt.subplots(figsize=(8, 6))
+        fig, ax = plt.subplots(figsize=self.figsize)
 
         # Confidence intervals
         ax.vlines(factor_loadings_data_df.index, 
@@ -291,7 +295,7 @@ class PLOTTER():
         width = 0.8
         offsets = (np.arange(m) - (m - 1) / 2) * (width / max(m, 1))
 
-        fig, ax = plt.subplots(figsize=(10, 6))
+        fig, ax = plt.subplots(figsize=self.figsize)
 
         colour_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
         asset_colour = {asset: colour_cycle[i % len(colour_cycle)] for i, asset in enumerate(asset_identifiers)}
@@ -417,7 +421,7 @@ class PLOTTER():
         num_factors: int = len(factors_to_plot)
 
         # Create one plot for each chart
-        fig, axes = plt.subplots(1, num_factors, sharey=True, constrained_layout=True)#, figsize=(8, 5))
+        fig, axes = plt.subplots(1, num_factors, sharey=True, constrained_layout=True, figsize = self.figsize)
         if num_factors == 1:
                 axes = [axes]  # make iterable
 
