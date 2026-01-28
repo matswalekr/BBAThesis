@@ -3,7 +3,7 @@ from typing import Tuple
 import pandas as pd
 
 # Import the configurations
-from configs import CONFIG, CONFIGURATION, FILENAMES
+from configs import CONFIG, CONFIGURATION, FILENAMES, DATAFRAME_CONTAINER
 
 type ALL_DATA = Tuple[
     pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame
@@ -85,8 +85,12 @@ def clean_factors(
     Tuple[pd.DataFrame,pd.DataFrame]
         Cleaned monthly and yearly factor data
     """
-    factors_monthly_raw_newindex: pd.DataFrame = factors_monthly_raw.rename_axis("date", axis="index")
-    factors_yearly_raw_newindex: pd.DataFrame = factors_yearly_raw.rename_axis("date", axis="index")
+    factors_monthly_raw_newindex: pd.DataFrame = factors_monthly_raw.rename_axis(
+        "date", axis="index"
+    )
+    factors_yearly_raw_newindex: pd.DataFrame = factors_yearly_raw.rename_axis(
+        "date", axis="index"
+    )
 
     factors_monthly_raw_decimal = factors_monthly_raw_newindex / 100
     factors_yearly_raw_decimal = factors_yearly_raw_newindex / 100
@@ -299,13 +303,30 @@ def clean_sic_desc_raw(
 
 
 def save_processed_data(
-    factors_monthly_processed: pd.DataFrame,
-    factors_yearly_processed: pd.DataFrame,
-    stock_prices_intersected: pd.DataFrame,
-    firm_info_processed: pd.DataFrame,
-    sic_desc_processed: pd.DataFrame,
+    data: DATAFRAME_CONTAINER,
     config: CONFIGURATION,
 ) -> None:
+    """
+    Function to save all of the processed data in the data/processed dir.
+
+    Parameters
+    ----------
+    data: DATAFRAME_CONTAINER
+        Container containing the 5 processed dataframes of the project
+    config: CONFIGURATION
+        Configuration of the project
+
+    Returns
+    -------
+    None
+    """
+
+    # Unpack the data
+    factors_monthly_processed: pd.DataFrame = data.monthly_fama_french
+    factors_yearly_processed: pd.DataFrame = data.yearly_fama_french
+    stock_prices_intersected: pd.DataFrame = data.stock_market_info
+    firm_info_processed: pd.DataFrame = data.firm_info
+    sic_desc_processed: pd.DataFrame = data.sic_info
 
     factors_monthly_processed.to_csv(
         config.paths.processed_out(FILENAMES.FF5_factors_monthly)
@@ -327,7 +348,7 @@ def save_processed_data(
     return
 
 
-def clean_data(config: CONFIGURATION) -> ALL_DATA:
+def clean_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
     """
     Function to clean all of the data.
 
@@ -338,8 +359,8 @@ def clean_data(config: CONFIGURATION) -> ALL_DATA:
 
     Returns
     -------
-    Tuple[pd.DataFrame]
-        The cleaned dataframes"""
+    DATAFRAME_CONTAINER
+        Container with the cleaned dataframes"""
 
     # Download the data
     (
@@ -367,12 +388,12 @@ def clean_data(config: CONFIGURATION) -> ALL_DATA:
 
     sic_desc_processed: pd.DataFrame = clean_sic_desc_raw(sic_desc_raw, config)
 
-    return (
-        factors_monthly_processed,
-        factors_yearly_processed,
-        stock_prices_intersected,
-        firm_info_processed,
-        sic_desc_processed,
+    return DATAFRAME_CONTAINER(
+        monthly_fama_french=factors_monthly_processed,
+        yearly_fama_french=factors_yearly_processed,
+        stock_market_info=stock_prices_intersected,
+        firm_info=firm_info_processed,
+        sic_info=sic_desc_processed,
     )
 
 
@@ -389,20 +410,10 @@ def clean_save_data(config: CONFIGURATION) -> None:
     -------
     None"""
 
-    (
-        factors_monthly_processed,
-        factors_yearly_processed,
-        stock_prices_intersected,
-        firm_info_processed,
-        sic_desc_processed,
-    ) = clean_data(config)
+    data: DATAFRAME_CONTAINER = clean_data(config)
 
     save_processed_data(
-        factors_monthly_processed,
-        factors_yearly_processed,
-        stock_prices_intersected,
-        firm_info_processed,
-        sic_desc_processed,
+        data,
         config,
     )
 

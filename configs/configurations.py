@@ -3,8 +3,7 @@
 
 import datetime as dt
 
-from .constants import (END_PANDEMIC, FACTORS_DATA_SOURCE, FACTORS_LIB,
-                        START_PANDEMIC)
+from .constants import END_PANDEMIC, FACTORS_DATA_SOURCE, FACTORS_LIB, START_PANDEMIC
 from .paths import PATHCONFIG
 from .schema import CONFIGURATION, PLOTTING_CONFIGURATIONS
 

@@ -21,7 +21,7 @@ class BasePathConfig:
     @property
     def meta_info(self) -> str:
         return dt.datetime.today().strftime("%Y-%m-%d")
-    
+
     def get_directory(self, type_: ALLOWED_TYPE) -> Path:
         raise NotImplementedError
 
@@ -73,11 +73,7 @@ class BasePathConfig:
         return max(matches, key=lambda x: x[0])[1]
 
     def get_file(
-            self, 
-            stem: str, 
-            type_: ALLOWED_TYPE, 
-            date: str,
-            suffix: Optional[str] = None
+        self, stem: str, type_: ALLOWED_TYPE, date: str, suffix: Optional[str] = None
     ) -> Path:
         """
         Returns the most recent file matching f"{stem}_{type_}_{date}{suffix}"".
@@ -107,10 +103,7 @@ class BasePathConfig:
         return directory / f"{stem}_{type_}_{date}{suffix}"
 
     def create_filename_with_date(
-        self,
-        stem: str,
-        type_: ALLOWED_TYPE,
-        suffix: Optional[str] = None
+        self, stem: str, type_: ALLOWED_TYPE, suffix: Optional[str] = None
     ) -> Path:
         """
         Function to create a path for a new file with a date identifier.
@@ -137,15 +130,13 @@ class BasePathConfig:
 
         return directory / f"{stem}_{type_}_{self.meta_info}{suffix}"
 
-    def resolve_path(self, stem: str, type_: ALLOWED_TYPE, date: Optional[dt.datetime]) -> Path:
+    def resolve_path(
+        self, stem: str, type_: ALLOWED_TYPE, date: Optional[dt.datetime]
+    ) -> Path:
         if date is None:
             return self.get_latest(stem=stem, type_=type_)
         else:
-            return self.get_file(
-                stem=stem,
-                type_=type_,
-                date=date.strftime("%Y-%m-%d")
-            )
+            return self.get_file(stem=stem, type_=type_, date=date.strftime("%Y-%m-%d"))
 
 
 # Paths for the analysis (only access to model and portfolio datas)
@@ -362,3 +353,12 @@ class CONFIGURATION:
 @dataclass(frozen=True, slots=True)
 class PLOTTING_CONFIGURATIONS:
     TIMESPANS_TO_PLOT: List[Dict[str, Union[str, pd.Timestamp, dt.datetime]]]
+
+
+@dataclass(slots=True)
+class DATAFRAME_CONTAINER:
+    monthly_fama_french: pd.DataFrame
+    yearly_fama_french: pd.DataFrame
+    stock_market_info: pd.DataFrame
+    firm_info: pd.DataFrame
+    sic_info: pd.DataFrame

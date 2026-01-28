@@ -6,7 +6,7 @@ import pandas as pd
 import pandas_datareader.data as web
 import wrds  # Wharton Research Data Services
 
-from configs import CONFIG, CONFIGURATION, FILENAMES
+from configs import CONFIG, CONFIGURATION, FILENAMES, DATAFRAME_CONTAINER
 
 type EntireData = Tuple[
     pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame
@@ -136,7 +136,7 @@ def download_sic_description_wrds(
 
 
 # Main functions
-def download_data(config: CONFIGURATION) -> EntireData:
+def download_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
     """Donwloads the entire data necessary for the project.
     Parameters
     ----------
@@ -145,8 +145,8 @@ def download_data(config: CONFIGURATION) -> EntireData:
 
     Returns
     -------
-    EntireData
-        5 pd.DataFrames containing the entire data"""
+    DATAFRAME_CONTAINER
+        Container containing 5 pd.DataFrames with the entire data"""
 
     # Connect to wrds Databank
     wrds_credentials: Dict[str, str] = config.get_wrds_data()
@@ -168,21 +168,33 @@ def download_data(config: CONFIGURATION) -> EntireData:
 
     db.close()
 
-    return ff5_monthly, ff5_yearly, prices_obs_universe, firm_info, sic_codes
+    return DATAFRAME_CONTAINER(
+        monthly_fama_french=ff5_monthly,
+        yearly_fama_french=ff5_yearly,
+        stock_market_info=prices_obs_universe,
+        firm_info=firm_info,
+        sic_info=sic_codes,
+    )
 
 
-def save_data(data: EntireData) -> None:
+def save_data(data: DATAFRAME_CONTAINER) -> None:
     """
     Function to save the data in the right location.
     Parameters
     ---------
-    data : EntireData
-        Tuple of 5 pd.DataFrames of the different info
+    data : DATAFRAME_CONTAINER
+        Container of 5 pd.DataFrames of the different info
 
     Returns
     -------
     None"""
-    ff5_monthly, ff5_yearly, prices_obs_universe, firm_info, sic_codes = data
+
+    # Unpack the container
+    ff5_monthly: pd.DataFrame = data.monthly_fama_french
+    ff5_yearly: pd.DataFrame = data.yearly_fama_french
+    prices_obs_universe: pd.DataFrame = data.stock_market_info
+    firm_info: pd.DataFrame = data.firm_info
+    sic_codes: pd.DataFrame = data.sic_info
 
     ff5_monthly.to_csv(CONFIG.paths.raw_out(FILENAMES.FF5_factors_monthly))
     ff5_yearly.to_csv(CONFIG.paths.raw_out(FILENAMES.FF5_factors_yearly))
@@ -211,7 +223,7 @@ def download_save_raw_data(config: CONFIGURATION) -> None:
     Returns
     -------
     None"""
-    data: EntireData = download_data(config)
+    data: DATAFRAME_CONTAINER = download_data(config)
     save_data(data)
 
     return

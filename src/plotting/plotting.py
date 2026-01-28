@@ -1,32 +1,32 @@
 import pandas as pd
-import datetime as dt 
+import datetime as dt
 import matplotlib.pyplot as plt
 import numpy as np
-from typing import List, Union, Literal, Tuple, Optional
+from typing import List, Union, Literal, Tuple, Optional, Any
 from configs import PLOTTING_CONFIGURATIONS
-from matplotlib import cycler
+from cycler import cycler, Cycler
 from .style import set_plot_style
 
-class PLOTTER():
-    def __init__(self, 
-        config: PLOTTING_CONFIGURATIONS, 
-        figsize: Optional[Tuple[int, int]] = None
-    )->None:
+
+class PLOTTER:
+    def __init__(
+        self, config: PLOTTING_CONFIGURATIONS, figsize: Optional[Tuple[int, int]] = None
+    ) -> None:
         self.config: PLOTTING_CONFIGURATIONS = config
-        self.figsize = figsize if figsize is not None else (10,6)
+        self.figsize = figsize if figsize is not None else (10, 6)
+        colors = plt.colormaps["tab10"](np.linspace(0, 1, plt.colormaps["tab10"].N))
+        self.cycler: Cycler = cycler(color=colors)
         set_plot_style()
-
-
 
     def plot_dashboard_pred_vs_actual_prices(
         self,
         asset_returns: pd.DataFrame,
         asset_name: str,
-        start_date: dt.datetime = None,
-        end_date: dt.datetime = None,
+        start_date: Optional[dt.datetime] = None,
+        end_date: Optional[dt.datetime] = None,
         start_price: float = 1.0,
-        plot_periods: bool = True
-    )->None:
+        plot_periods: bool = True,
+    ) -> None:
         """
         Function to plot a dashboard for comparing the predicted vs actual prices of an asset.
         Plots 3 different subplots:
@@ -44,10 +44,10 @@ class PLOTTER():
         asset_name : str
             Name of the asset being plotted.
             Can be Ticker or any other identifier.
-        start_date : dt.datetime = None
+        start_date : Optional[dt.datetime] = None
             Optional start date for the plot. Start date is included.
             Default is None, using earliest available, non-NULL dates.
-        end_date : dt.datetime = None
+        end_date : Optional[dt.datetime] = None
             Optional end date for the plot. End date is included.
             Default is None, using latest available, non-NULL dates.
         start_price : float = 1.0
@@ -57,7 +57,7 @@ class PLOTTER():
         plot_periods : bool = True
             Optional flag on whether to plot the specified periods on the line plot.
             Default is true
-            
+
         Returns
         --------
         None
@@ -76,30 +76,38 @@ class PLOTTER():
         asset_returns_nona: pd.DataFrame = asset_returns.dropna()
 
         # Convert returns to prices
-        pred_prices: pd.Series =     (1 + asset_returns_nona['Pred_returns']).cumprod()   * start_price
-        actual_prices: pd.Series =   (1 + asset_returns_nona['Actual_returns']).cumprod() * start_price
+        pred_prices: pd.Series = (
+            1 + asset_returns_nona["Pred_returns"]
+        ).cumprod() * start_price
+        actual_prices: pd.Series = (
+            1 + asset_returns_nona["Actual_returns"]
+        ).cumprod() * start_price
 
         # Set-up the plots
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, 
-                                            sharex=False, 
-                                            figsize=self.figsize,
-                                            gridspec_kw={"hspace": 1.0})
-        
-        fontsize_subheader: float  = 12.0
+        fig, (ax1, ax2, ax3) = plt.subplots(
+            3, 1, sharex=False, figsize=self.figsize, gridspec_kw={"hspace": 1.0}
+        )
+
+        fontsize_subheader: float = 12.0
         fontsize_mainheader: float = 18.0
 
-        fig.suptitle(f'Predicted vs Actual Prices Dashboard for {asset_name}', fontsize=fontsize_mainheader)
+        fig.suptitle(
+            f"Predicted vs Actual Prices Dashboard for {asset_name}",
+            fontsize=fontsize_mainheader,
+        )
 
         # First panel: Comparison between actual and predicted prices over time
-        ax1.set_title('Predicted vs Actual Prices Over Time', fontsize=fontsize_subheader)
-        ax1.plot(asset_returns_nona.index, pred_prices, 
-                label="Predicted Price", 
-                color="red")
-        
-        ax1.plot(asset_returns_nona.index, actual_prices, 
-                label="Actual Price", 
-                color="green")
-        
+        ax1.set_title(
+            "Predicted vs Actual Prices Over Time", fontsize=fontsize_subheader
+        )
+        ax1.plot(
+            asset_returns_nona.index, pred_prices, label="Predicted Price", color="red"
+        )
+
+        ax1.plot(
+            asset_returns_nona.index, actual_prices, label="Actual Price", color="green"
+        )
+
         # Shade the specified periods
         if plot_periods:
             for period in self.config.TIMESPANS_TO_PLOT:
@@ -107,21 +115,26 @@ class PLOTTER():
                     period["start"],
                     period["end"],
                     alpha=0.3,
-                    label= period["name"],
-                    color= period["color"]
+                    label=period["name"],
+                    color=period["color"],
                 )
-        
+
         ax1.set_xlabel("date")
         ax1.set_ylabel("Price")
 
         ax1.legend()
 
         # Second panel: Residual returns over time
-        ax2.set_title('Residual Returns Over Time', fontsize=fontsize_subheader)
-        ax2.bar(asset_returns_nona.index, asset_returns_nona['Residual_returns'], 
-                label="Residual Returns",
-                color="blue", alpha=0.4, 
-                width=30, align='center')
+        ax2.set_title("Residual Returns Over Time", fontsize=fontsize_subheader)
+        ax2.bar(
+            asset_returns_nona.index,
+            asset_returns_nona["Residual_returns"],
+            label="Residual Returns",
+            color="blue",
+            alpha=0.4,
+            width=30,
+            align="center",
+        )
         ax2.set_ylabel("Return difference")
         ax2.set_xlabel("date")
         ax2.axhline(0, color="black", linewidth=0.8)
@@ -129,14 +142,13 @@ class PLOTTER():
         ax2.legend()
 
         # Third panel: Distribution of residual returns
-        ax3.set_title('Distribution of Residual Returns', fontsize=fontsize_subheader)
-        ax3.hist(asset_returns_nona['Residual_returns'], 
-                bins=40, 
-                color="purple", alpha=0.7)
+        ax3.set_title("Distribution of Residual Returns", fontsize=fontsize_subheader)
+        ax3.hist(
+            asset_returns_nona["Residual_returns"], bins=40, color="purple", alpha=0.7
+        )
         ax3.set_xlabel("Residual Return")
         ax3.set_ylabel("Frequency")
 
-        
         # Plot the charts
         plt.plot()
 
@@ -144,15 +156,15 @@ class PLOTTER():
         self,
         factor_loadings: pd.DataFrame,
         asset_identifier: str,
-        asset_name: str = None,
+        asset_name: Optional[str] = None,
         factors_to_plot: Union[List[str], Literal["all"]] = "all",
-        confidence_interval_stdev: float = 1.0
-    )-> None:
-        """ 
+        confidence_interval_stdev: float = 1.0,
+    ) -> None:
+        """
         Function to plot factor loadings as a forest plot.
         It plots the expected value and a confidence intervals for each factor.
         Expects a multi-index DataFrame with the factor loadings and their stdevs.
-        
+
         Parameters
         ----------
         factor_loadings : pd.DataFrame
@@ -162,7 +174,7 @@ class PLOTTER():
             Expects the stdev of the loadings to be in the "Stdev" index.
         asset_identifier : str
             Identifier of the asset to plot.
-        asset_name : str = None
+        asset_name : Optional[str] = None
             Optional name of the asset to plot
             If omitted, defaults to using the asset_identifier
             Default is None.
@@ -179,17 +191,25 @@ class PLOTTER():
         None:
             Plots the forest plot of the factor loadings.
         """
-        factor_loadings = factor_loadings[asset_identifier]
+        factor_loadings_asset: Union[pd.Series, pd.DataFrame] = factor_loadings[
+            asset_identifier
+        ]
 
-        stdevs: pd.DataFrame = factor_loadings.loc["Stdev"]
-        betas: pd.DataFrame = factor_loadings.loc["Beta"]
+        if isinstance(factor_loadings_asset, pd.DataFrame):
+            raise TypeError(
+                "factor_loadings[asset_identifier] returns a pd.DataFrame. Make sure the asset_identifier is a correct name of a portfolio."
+            )
+
+        stdevs: pd.Series = factor_loadings_asset.loc["Stdev"]
+        betas: pd.Series = factor_loadings_asset.loc["Beta"]
 
         if factors_to_plot == "all":
-            factors_to_plot: List[str] = betas.index.tolist()
+            factors_to_plot = betas.index.tolist()
 
-        
-        # DataFrame to carry the factor loadings for plotting
-        factor_loadings_data_df: pd.DataFrame = pd.DataFrame(columns=["Estimate", "CI_Lower", "CI_Upper"])
+        # DataFrame to carry the factor loadings for plotting
+        factor_loadings_data_df: pd.DataFrame = pd.DataFrame(
+            columns=["Estimate", "CI_Lower", "CI_Upper"]
+        )
 
         # Extract the info for each factor
         for factor in factors_to_plot:
@@ -203,29 +223,32 @@ class PLOTTER():
                 factor_loadings_data_df.loc[factor] = [beta, ci_lower, ci_upper]
 
         xpos = np.arange(len(factors_to_plot))
-        
-        # Plot the data
+
+        # Plot the data
         fig, ax = plt.subplots(figsize=self.figsize)
 
         # Confidence intervals
-        ax.vlines(factor_loadings_data_df.index, 
-                ymin=factor_loadings_data_df["CI_Lower"],
-                ymax=factor_loadings_data_df["CI_Upper"],
-                color='grey', alpha=0.6, linewidth=14) 
+        ax.vlines(
+            factor_loadings_data_df.index,
+            ymin=factor_loadings_data_df["CI_Lower"],
+            ymax=factor_loadings_data_df["CI_Upper"],
+            color="grey",
+            alpha=0.6,
+            linewidth=14,
+        )
 
         # Point estimates
-        ax.plot(xpos, 
-                factor_loadings_data_df["Estimate"], 
-                "_", color='black',
-                markersize=14)
-        
+        ax.plot(
+            xpos, factor_loadings_data_df["Estimate"], "_", color="black", markersize=14
+        )
+
         # 0 reference line
-        ax.axhline(0, linestyle='--', linewidth=1, color='black')
+        ax.axhline(0, linestyle="--", linewidth=1, color="black")
 
         # Formatting
         name: str = asset_name if asset_name is not None else asset_identifier
         ax.set_xticks(xpos)
-        ax.set_xticklabels(factors_to_plot, rotation=45, ha='right')
+        ax.set_xticklabels(factors_to_plot, rotation=45, ha="right")
         ax.set_ylabel("Estimated Factor Loading")
         ax.set_title(f"Forest Plot of Factor Loadings for {name}", fontsize=22)
 
@@ -236,15 +259,15 @@ class PLOTTER():
         self,
         factor_loadings: pd.DataFrame,
         asset_identifiers: List[str],
-        title: str = None,
+        title: Optional[str] = None,
         factors_to_plot: Union[List[str], Literal["all"]] = "all",
-        confidence_interval_stdev: float = 1.0
-    )-> None:
-        """ 
+        confidence_interval_stdev: float = 1.0,
+    ) -> None:
+        """
         Function to plot factor loadings of different assets next to each other as a forest plot.
         It plots the expected value and a confidence intervals for each factor.
         Expects a multi-index DataFrame with the factor loadings and their stdevs.
-        
+
         Parameters
         ----------
         factor_loadings : pd.DataFrame
@@ -254,7 +277,7 @@ class PLOTTER():
             Expects the stdev of the loadings to be in the "Stdev" index.
         asset_identifiers : str
             Identifier of the assets to plot.
-        title : str = None
+        title : Optional[str] = None
             Optional title of the plot
             If omitted, defaults to using the asset_identifier
             Default is None.
@@ -273,11 +296,14 @@ class PLOTTER():
         """
         factor_loadings = factor_loadings[asset_identifiers]
 
-        stdevs: pd.DataFrame = factor_loadings.xs("Stdev", level=0)
-        betas: pd.DataFrame = factor_loadings.xs("Beta", level=0)
-        
+        stdevs: Union[pd.DataFrame, pd.Series] = factor_loadings.xs("Stdev", level=0)
+        betas: Union[pd.DataFrame, pd.Series] = factor_loadings.xs("Beta", level=0)
+
+        if not isinstance(stdevs, pd.DataFrame) or not isinstance(betas, pd.DataFrame):
+            raise TypeError("Problem with factor_loadings")
+
         if factors_to_plot == "all":
-            factors_to_plot: List[str] = betas.index.tolist()
+            factors_to_plot = betas.index.tolist()
 
         # Subset to factors of interest
         betas = betas.loc[factors_to_plot, asset_identifiers]
@@ -286,7 +312,6 @@ class PLOTTER():
         # Pre-compute CIs as DataFrames (numeric, aligned)
         ci_lower = betas - confidence_interval_stdev * stdevs
         ci_upper = betas + confidence_interval_stdev * stdevs
-
 
         # ---- Plot: assets side-by-side per factor
         x = np.arange(len(factors_to_plot))
@@ -298,8 +323,10 @@ class PLOTTER():
         fig, ax = plt.subplots(figsize=self.figsize)
 
         colour_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-        asset_colour = {asset: colour_cycle[i % len(colour_cycle)] for i, asset in enumerate(asset_identifiers)}
-
+        asset_colour = {
+            asset: colour_cycle[i % len(colour_cycle)]
+            for i, asset in enumerate(asset_identifiers)
+        }
 
         for j, asset in enumerate(asset_identifiers):
             xpos = x + offsets[j]
@@ -309,7 +336,15 @@ class PLOTTER():
             yhigh = ci_upper[asset].to_numpy(dtype=float)
 
             # CI lines
-            ax.vlines(xpos, ylow, yhigh, linewidth=14, alpha=0.6, label=asset, color=asset_colour[asset])
+            ax.vlines(
+                xpos,
+                ylow,
+                yhigh,
+                linewidth=14,
+                alpha=0.6,
+                label=asset,
+                color=asset_colour[asset],
+            )
 
             # Point estimates
             ax.plot(xpos, y, marker="_", linestyle="None", markersize=14, color="black")
@@ -321,7 +356,9 @@ class PLOTTER():
         ax.set_ylabel("Estimated Factor Loading")
 
         title_name = title if title is not None else ", ".join(asset_identifiers)
-        ax.set_title(f"Forest Plot of Factor Loadings comparison: {title_name}", fontsize=14)
+        ax.set_title(
+            f"Forest Plot of Factor Loadings comparison: {title_name}", fontsize=14
+        )
 
         ax.legend(title="Asset", frameon=False)
         plt.tight_layout()
@@ -331,10 +368,10 @@ class PLOTTER():
         self,
         factor_loadings: pd.DataFrame,
         asset_identifier: str,
-        asset_name: str = None,
+        asset_name: Optional[str] = None,
         factors_to_plot: Union[List[str], Literal["all"]] = "all",
-        confidence_interval_stdev: float = 1.0
-    )-> None:
+        confidence_interval_stdev: float = 1.0,
+    ) -> None:
         """
         Function to show a forest plot comparing the small Cap, large Cap and entire industry portfolio.
         It plots the expected value and a confidence intervals for each factor.
@@ -356,34 +393,38 @@ class PLOTTER():
         confidence_interval_stdev : float = 1.0
             Optional argument to specify the confidence interval in terms of stdev
             Default is one stdev
-        
+
         Returns
         -------
         None : Plots the forest plot
         """
-        
-        assets_to_plot: List[str] = [asset_identifier, f"{asset_identifier} - Large Cap", f"{asset_identifier} - Small Cap"]
+
+        assets_to_plot: List[str] = [
+            asset_identifier,
+            f"{asset_identifier} - Large Cap",
+            f"{asset_identifier} - Small Cap",
+        ]
         self.compare_factor_loadings(
             factor_loadings=factor_loadings,
             asset_identifiers=assets_to_plot,
             title=asset_name,
             factors_to_plot=factors_to_plot,
-            confidence_interval_stdev=confidence_interval_stdev
+            confidence_interval_stdev=confidence_interval_stdev,
         )
 
     def plot_factor_loadings_over_time(
         self,
         factor_loadings_over_time: pd.DataFrame,
         asset_identifier: str,
-        asset_name: str = None,
+        asset_name: Optional[str] = None,
         factors_to_plot: Union[List[str], Literal["all"]] = "all",
-        confidence_interval_stdev: float = 1.0
-    )-> None:
-        """ 
+        confidence_interval_stdev: float = 1.0,
+    ) -> None:
+        """
         Function to plot factor loadings for different timeperiods as a forest plot.
         It plots the expected value and a confidence intervals for each factor.
         Expects a multi-index DataFrame with the factor loadings and their stdevs for different timeperiods.
-        
+
         Parameters
         ----------
         factor_loadings_over_time: pd.DataFrame
@@ -410,24 +451,42 @@ class PLOTTER():
         None:
             Plots the forest plot of the factor loadings.
         """
-        factor_loadings_over_time: pd.DataFrame = factor_loadings_over_time[asset_identifier]
+        factor_loadings_over_time_identifier: Union[pd.DataFrame, pd.Series] = (
+            factor_loadings_over_time[asset_identifier]
+        )
 
-        stdevs: pd.DataFrame = factor_loadings_over_time.loc["Stdev"]
-        betas: pd.DataFrame = factor_loadings_over_time.loc["Beta"]
+        if not isinstance(factor_loadings_over_time_identifier, pd.DataFrame):
+            raise TypeError(
+                "factor_loadings_over_time_identifier is not of right type. Issue with factor_loadings_over_time[asset_identifier]"
+            )
+
+        stdevs: Union[pd.DataFrame, pd.Series] = (
+            factor_loadings_over_time_identifier.loc["Stdev"]
+        )
+        betas: Union[pd.DataFrame, pd.Series] = (
+            factor_loadings_over_time_identifier.loc["Beta"]
+        )
+
+        if not isinstance(stdevs, pd.DataFrame) or not isinstance(betas, pd.DataFrame):
+            raise TypeError(
+                "factor_loadings_over_time is probably not specified correctly."
+            )
 
         if factors_to_plot == "all":
-            factors_to_plot: List[str] = betas.index.tolist()
+            factors_to_plot = betas.index.tolist()
 
         num_factors: int = len(factors_to_plot)
 
         # Create one plot for each chart
-        fig, axes = plt.subplots(1, num_factors, sharey=True, constrained_layout=True, figsize = self.figsize)
+        fig, axes = plt.subplots(
+            1, num_factors, sharey=True, constrained_layout=True, figsize=self.figsize
+        )
         if num_factors == 1:
-                axes = [axes]  # make iterable
+            axes = [axes]  # make iterable
 
         # Use a color cycler for periods
         periods = betas.columns.tolist()
-        ax_cycle = cycler(color=plt.cm.tab10.colors)  # you can choose another colormap
+        ax_cycle = self.cycler
 
         for i, ax in enumerate(axes):
             factor: str = factors_to_plot[i]
@@ -435,18 +494,29 @@ class PLOTTER():
 
             # Plot each period
             for period in periods:
-                beta: float = betas.at[factor, period]
-                stdev: float = stdevs.at[factor, period]
+
+                def as_float(x: Any) -> float:
+                    return float(pd.to_numeric(x, errors="raise"))
+
+                beta: float = as_float(betas.at[factor, period])
+                stdev: float = as_float(stdevs.at[factor, period])
                 ci_lower: float = beta - confidence_interval_stdev * stdev
                 ci_upper: float = beta + confidence_interval_stdev * stdev
 
-                color = next(color_cycler)['color']  # get next color
+                color = next(color_cycler)["color"]  # get next color
 
-                ax.vlines(period, ymin=ci_lower, ymax=ci_upper, color=color, alpha=0.6, linewidth=8)
+                ax.vlines(
+                    period,
+                    ymin=ci_lower,
+                    ymax=ci_upper,
+                    color=color,
+                    alpha=0.6,
+                    linewidth=8,
+                )
                 ax.plot(period, beta, "_", color=color, markersize=8, label=str(period))
 
             # 0 reference line
-            ax.axhline(0, linestyle='--', linewidth=1, color='black')
+            ax.axhline(0, linestyle="--", linewidth=1, color="black")
 
             # Title and remove x-axis labels
             ax.set_title(factor, fontsize=10)
@@ -460,16 +530,15 @@ class PLOTTER():
             by_label.values(),
             by_label.keys(),
             title="Period",
-            loc="upper left",      # position relative to the figure
+            loc="upper left",  # position relative to the figure
             borderaxespad=0.2,
-            fontsize=6
+            fontsize=6,
         )
 
         # Shared y-axis label
-        axes[0].set_ylabel("Estimated Factor Loading", labelpad=55, va = "baseline")
+        axes[0].set_ylabel("Estimated Factor Loading", labelpad=55, va="baseline")
 
         # Main title
         name: str = asset_name if asset_name is not None else asset_identifier
-        fig.suptitle(f"Factor loadings over time {name}",
-                    fontsize=16, y=1.05)
+        fig.suptitle(f"Factor loadings over time {name}", fontsize=16, y=1.05)
         plt.show()
