@@ -2,10 +2,10 @@ import pandas as pd
 import datetime as dt
 import matplotlib.pyplot as plt
 import numpy as np
-from typing import List, Union, Literal, Tuple, Optional, Any
+from typing import List, Union, Literal, Tuple, Optional
 from configs import PLOTTING_CONFIGURATIONS
-from cycler import cycler, Cycler
-from .style import set_plot_style
+from .style import set_plot_style, get_palette, colour_cycle, colour_map
+from .utils import as_float
 
 
 class PLOTTER:
@@ -13,9 +13,12 @@ class PLOTTER:
         self, config: PLOTTING_CONFIGURATIONS, figsize: Optional[Tuple[int, int]] = None
     ) -> None:
         self.config: PLOTTING_CONFIGURATIONS = config
+
         self.figsize = figsize if figsize is not None else (10, 6)
-        colors = plt.colormaps["tab10"](np.linspace(0, 1, plt.colormaps["tab10"].N))
-        self.cycler: Cycler = cycler(color=colors)
+        self.fontsize_header: float = 18.0
+        self.fontsize_subheader: float = 12.0
+
+        self.palette: List[np.ndarray] = get_palette(n=10)
         set_plot_style()
 
     def plot_dashboard_pred_vs_actual_prices(
@@ -88,17 +91,14 @@ class PLOTTER:
             3, 1, sharex=False, figsize=self.figsize, gridspec_kw={"hspace": 1.0}
         )
 
-        fontsize_subheader: float = 12.0
-        fontsize_mainheader: float = 18.0
-
         fig.suptitle(
             f"Predicted vs Actual Prices Dashboard for {asset_name}",
-            fontsize=fontsize_mainheader,
+            fontsize=self.fontsize_header,
         )
 
         # First panel: Comparison between actual and predicted prices over time
         ax1.set_title(
-            "Predicted vs Actual Prices Over Time", fontsize=fontsize_subheader
+            "Predicted vs Actual Prices Over Time", fontsize=self.fontsize_subheader
         )
         ax1.plot(
             asset_returns_nona.index, pred_prices, label="Predicted Price", color="red"
@@ -125,7 +125,7 @@ class PLOTTER:
         ax1.legend()
 
         # Second panel: Residual returns over time
-        ax2.set_title("Residual Returns Over Time", fontsize=fontsize_subheader)
+        ax2.set_title("Residual Returns Over Time", fontsize=self.fontsize_subheader)
         ax2.bar(
             asset_returns_nona.index,
             asset_returns_nona["Residual_returns"],
@@ -142,7 +142,7 @@ class PLOTTER:
         ax2.legend()
 
         # Third panel: Distribution of residual returns
-        ax3.set_title("Distribution of Residual Returns", fontsize=fontsize_subheader)
+        ax3.set_title("Distribution of Residual Returns", fontsize=self.fontsize_subheader)
         ax3.hist(
             asset_returns_nona["Residual_returns"], bins=40, color="purple", alpha=0.7
         )
@@ -250,7 +250,7 @@ class PLOTTER:
         ax.set_xticks(xpos)
         ax.set_xticklabels(factors_to_plot, rotation=45, ha="right")
         ax.set_ylabel("Estimated Factor Loading")
-        ax.set_title(f"Forest Plot of Factor Loadings for {name}", fontsize=22)
+        ax.set_title(f"Forest Plot of Factor Loadings for {name}", fontsize= self.fontsize_header)
 
         plt.tight_layout()
         plt.show()
@@ -322,11 +322,7 @@ class PLOTTER:
 
         fig, ax = plt.subplots(figsize=self.figsize)
 
-        colour_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-        asset_colour = {
-            asset: colour_cycle[i % len(colour_cycle)]
-            for i, asset in enumerate(asset_identifiers)
-        }
+        asset_colour = colour_map(asset_identifiers, self.palette)
 
         for j, asset in enumerate(asset_identifiers):
             xpos = x + offsets[j]
@@ -357,7 +353,7 @@ class PLOTTER:
 
         title_name = title if title is not None else ", ".join(asset_identifiers)
         ax.set_title(
-            f"Forest Plot of Factor Loadings comparison: {title_name}", fontsize=14
+            f"Forest Plot of Factor Loadings comparison: {title_name}", fontsize=self.fontsize_header
         )
 
         ax.legend(title="Asset", frameon=False)
@@ -486,24 +482,20 @@ class PLOTTER:
 
         # Use a color cycler for periods
         periods = betas.columns.tolist()
-        ax_cycle = self.cycler
 
         for i, ax in enumerate(axes):
             factor: str = factors_to_plot[i]
-            color_cycler = iter(ax_cycle)
+            color_cycler = colour_cycle(self.palette)
 
             # Plot each period
             for period in periods:
-
-                def as_float(x: Any) -> float:
-                    return float(pd.to_numeric(x, errors="raise"))
 
                 beta: float = as_float(betas.at[factor, period])
                 stdev: float = as_float(stdevs.at[factor, period])
                 ci_lower: float = beta - confidence_interval_stdev * stdev
                 ci_upper: float = beta + confidence_interval_stdev * stdev
 
-                color = next(color_cycler)["color"]  # get next color
+                color = next(color_cycler)
 
                 ax.vlines(
                     period,
@@ -540,5 +532,5 @@ class PLOTTER:
 
         # Main title
         name: str = asset_name if asset_name is not None else asset_identifier
-        fig.suptitle(f"Factor loadings over time {name}", fontsize=16, y=1.05)
+        fig.suptitle(f"Factor loadings over time {name}", fontsize=self.fontsize_header, y=1.05)
         plt.show()
