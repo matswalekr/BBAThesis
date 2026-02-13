@@ -399,10 +399,10 @@ class PLOTTING_CONFIGURATIONS:
 
 @dataclass(slots=True)
 class DATAFRAME_CONTAINER:
-    monthly_fama_french: pd.DataFrame
-    yearly_fama_french: pd.DataFrame
     stock_market_info: pd.DataFrame
     firm_info: pd.DataFrame
     sic_info: pd.DataFrame
     monthly_inflation: pd.Series
     ff_industry_portfolios: pd.DataFrame
+    monthly_fama_french: pd.DataFrame = None
+    yearly_fama_french: pd.DataFrame = None

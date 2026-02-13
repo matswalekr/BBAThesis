@@ -3,7 +3,7 @@ from typing import Any, List, Literal, Tuple
 import numpy as np
 import pandas as pd
 
-from configs import CONFIG, CONFIGURATION, FILENAMES
+from configs import CONFIG, CONFIGURATION, FILENAMES, DATAFRAME_CONTAINER
 
 # utils function to discount values based on inflation
 def inflation_discount(
@@ -30,9 +30,9 @@ def inflation_discount(
 
 
 # Import the data
-def get_stockprices_firminfo_siccodes_inflation(
+def download_processed_data(
     config: CONFIGURATION,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> DATAFRAME_CONTAINER:
     """
     Function to read the stock prices, firm info, and SIC code descriptions from the processed data directory.
 
@@ -43,8 +43,8 @@ def get_stockprices_firminfo_siccodes_inflation(
 
     Returns
     -------
-    Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]
-        A tuple containing three DataFrames: stock prices, firm info, SIC code, and inflation descriptions.
+    DATAFRAME_CONTAINER
+        A container for the dataframes.
     """
 
     if config.LOG_INFO:
@@ -76,7 +76,13 @@ def get_stockprices_firminfo_siccodes_inflation(
     if config.LOG_INFO:
         config.logger.info("Successfully downloaded the processed data")
 
-    return stock_prices, firm_info, sic_codes, inflation, ff_industry_portfolios
+    return DATAFRAME_CONTAINER(
+        stock_market_info=stock_prices,
+        firm_info=firm_info,
+        sic_info=sic_codes,
+        monthly_inflation=inflation,
+        ff_industry_portfolios=ff_industry_portfolios
+    )
 
 
 # Compute and cutoff MarketCap
@@ -739,7 +745,12 @@ def create_portfolios_and_returns(
     """
 
     # Dowload the data
-    stock_prices, firm_info, sic_codes, inflation, ff_industry_portfolios = get_stockprices_firminfo_siccodes_inflation(config)
+    data: DATAFRAME_CONTAINER = download_processed_data(config)
+    stock_prices: pd.DataFrame = data.stock_market_info
+    firm_info: pd.DataFrame = data.firm_info
+    sic_codes: pd.DataFrame = data.sic_info,
+    inflation: pd.DataFrame = data.monthly_inflation
+    ff_industry_portfolios: pd.DataFrame = data.ff_industry_portfolios
 
     if config.LOG_INFO:
         config.logger.info("Starting to create portfolios....\n" + "-"*80)
