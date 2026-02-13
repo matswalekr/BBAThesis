@@ -47,6 +47,9 @@ def get_stockprices_firminfo_siccodes_inflation(
         A tuple containing three DataFrames: stock prices, firm info, SIC code, and inflation descriptions.
     """
 
+    if config.LOG_INFO:
+        config.logger.info("Starting to download processed data...\n"+ "-"*80)
+
     stock_prices: pd.DataFrame = pd.read_csv(
         config.paths.processed_read(FILENAMES.Stock_prices),
         parse_dates=["date"],
@@ -66,6 +69,9 @@ def get_stockprices_firminfo_siccodes_inflation(
         parse_dates=["date"],
         index_col="date",
     )
+
+    if config.LOG_INFO:
+        config.logger.info("Successfully downloaded the processed data")
 
     return stock_prices, firm_info, sic_codes, inflation
 
@@ -120,7 +126,12 @@ def apply_marketcap_cutoff_latestperiod(
         stock_prices.loc[latest_date].reset_index().drop_duplicates(subset=["gvkey"])
     )
 
-    return latest_prices[latest_prices["market_cap"] >= marketcap_cutoff]
+    result:pd.DataFrame = latest_prices[latest_prices["market_cap"] >= marketcap_cutoff]
+
+    if config.LOG_INFO:
+        config.logger.info(f"Applied market cap cutoff of {marketcap_cutoff} to the latest period ({latest_date.date()}). Number of firms after cutoff: {result['gvkey'].nunique()}")
+
+    return result
 
 
 def apply_marketcap_cutoff_allperiods(
@@ -157,7 +168,15 @@ def apply_marketcap_cutoff_allperiods(
     survivors = mask.groupby(stock_prices["gvkey"]).all()
     filtered_stock_prices = stock_prices[stock_prices["gvkey"].isin(survivors[survivors].index)]
 
-    return filtered_stock_prices
+    # Order the filtered stock prices by date and keep only the latest entry for each gvkey
+    filtered_stock_prices_lastval = (
+        filtered_stock_prices.sort_index().drop_duplicates(subset=["gvkey"], keep="last").reset_index()
+    )
+
+    if config.LOG_INFO:
+        config.logger.info(f"Applied market cap cutoff of {min_marketcap} to all periods. Number of firms after cutoff: {filtered_stock_prices['gvkey'].nunique()}")
+
+    return filtered_stock_prices_lastval
 
 
 # Create Industry Portfolios from SIC-Codes
@@ -265,12 +284,17 @@ def compute_industry_portfolios_sic(
     # Merge the two dataframes
     merged = firms.merge(descr, on="sic_level", how="left")
 
-    return merged[["gvkey", "sic_level", "sicdescription"]]
+    result: pd.DataFrame = merged[["gvkey", "sic_level", "sicdescription"]]
+
+    if config.LOG_INFO:
+        config.logger.info(f"Successfully computed the industry portfolios using SIC codes at level {sic_level}")
+
+    return result
 
 
 # Portfolio formatting
 def intersect_portfolios_price_companyinfo(
-    portfolios_df: pd.DataFrame, price_df: pd.DataFrame, firm_info_df: pd.DataFrame
+    portfolios_df: pd.DataFrame, firms_to_keep: pd.DataFrame, firm_info_df: pd.DataFrame
 ) -> pd.DataFrame:
     """
     Function to intersect the portfolios dataframe with the firm information dataframe.
@@ -279,7 +303,7 @@ def intersect_portfolios_price_companyinfo(
     ----------
     portfolios_df : pd.DataFrame
         DataFrame containing portfolio information.
-    prices_df: pd.DataFrame
+    firms_to_keep: pd.DataFrame
         Dataframe containing the prices info
     firm_info_df : pd.DataFrame
         DataFrame containing firm information.
@@ -289,11 +313,9 @@ def intersect_portfolios_price_companyinfo(
     pd.DataFrame
         A DataFrame containing only the firms that are present in both the portfolios and firm information dataframes.
     """
-    print(price_df)
     final_portfolio: pd.DataFrame = portfolios_df.merge(
-        price_df, on="gvkey", how="inner"
+        firms_to_keep, on="gvkey", how="inner"
     ).merge(firm_info_df[["gvkey", "companyname"]], on="gvkey", how="left")
-    print(final_portfolio.columns)
     return final_portfolio
 
 
@@ -313,7 +335,6 @@ def get_portfolio_constitution(portfolio_df: pd.DataFrame) -> pd.DataFrame:
         A DataFrame containing the portfolio constitution details.
     """
     # Create a new dataframe that tracks the constitution of the portfolio
-    print(portfolio_df.columns)
     final_portfolio_constitution: pd.DataFrame = portfolio_df.drop_duplicates(
         subset="gvkey", keep="last"
     ).set_index(["sicdescription", "gvkey"])[
@@ -409,6 +430,7 @@ def compute_marketcap_portfolios(
 
 def aggregate_sicportfolio(
     portfolio: pd.DataFrame,
+    config: CONFIGURATION
 ) -> pd.DataFrame:
     """
     Function to aggregate the portfolio by SIC description and sort them.
@@ -418,6 +440,8 @@ def aggregate_sicportfolio(
     ----------
     portfolio : pd.DataFrame
         DataFrame containing the portfolio information.
+    config: CONFIGURATION
+        COnfiguration of the project
 
     Returns
     -------
@@ -435,6 +459,9 @@ def aggregate_sicportfolio(
         )
         .reset_index()
     )
+
+    if config.LOG_INFO:
+        config.logger.info("Successfully aggregated the portfolios by SIC description")
 
     return sic_portfolios
 
@@ -459,7 +486,12 @@ def drop_nonsignicant_portfolios(
     """
     min_firms: int = config.CUTOFF_FIRMS_PER_PORTFOLIO
 
-    return portfolio_df[portfolio_df["num_firms"] >= min_firms]
+    result: pd.DataFrame = portfolio_df[portfolio_df["num_firms"] >= min_firms]
+
+    if config.LOG_INFO:
+        config.logger.info(f"Dropping non-significant portfolios with less than {min_firms} firms")
+
+    return result
 
 
 # Get the returns from portfolios
@@ -569,6 +601,9 @@ def calculate_portfolio_returns(
         "date"
     ).dropna(how="all")
 
+    if config.LOG_INFO:
+        config.logger.info("Successfully calculated the portfolio returns")
+
     return portfolio_returns_formated
 
 
@@ -596,11 +631,18 @@ def save_portfolio_returns_constitution(
         This function saves the dataframes to CSV files and does not return anything.
     """
 
+    if config.LOG_INFO:
+        config.logger.info("Saving the portfolio returns and constitution details to CSV files..."+ "-"*80)
+
+
     # Save the results
     portfolio_returns.to_csv(config.paths.portfolios_out(FILENAMES.Portfolio_returns))
     portfolio_constitution.to_csv(
         config.paths.portfolios_out(FILENAMES.Portfolio_construction_details)
     )
+
+    if config.LOG_INFO:
+        config.logger.info("Successfully saved the portfolio returns and constitution details")
 
     return
 
@@ -629,6 +671,10 @@ def create_portfolios_and_returns(
     # Dowload the data
     stock_prices, firm_info, sic_codes, inflation = get_stockprices_firminfo_siccodes_inflation(config)
 
+    if config.LOG_INFO:
+        config.logger.info("Starting to create portfolios....\n" + "-"*80)
+
+
     # Compute the market cap
     stock_prices["market_cap"] = compute_market_cap(
         stock_prices, "close", "sharesoutstanding"
@@ -636,9 +682,9 @@ def create_portfolios_and_returns(
 
     # Apply market cap cutoff to filter the firms
     if config.DISCOUNT_MARKETCAP_FIRM_INFLATION:
-        prices_cutoff: pd.DataFrame = apply_marketcap_cutoff_allperiods(stock_prices, inflation, config)
+        firms_to_keep: pd.DataFrame = apply_marketcap_cutoff_allperiods(stock_prices, inflation, config)
     else:
-        prices_cutoff: pd.DataFrame = apply_marketcap_cutoff_latestperiod(stock_prices, config)
+        firms_to_keep: pd.DataFrame = apply_marketcap_cutoff_latestperiod(stock_prices, config)
 
     # Get the main portfolios by industry using the SIC codes
     indutry_portfolios: pd.DataFrame = compute_industry_portfolios_sic(
@@ -649,12 +695,11 @@ def create_portfolios_and_returns(
     industry_portfolios_with_info: pd.DataFrame = (
         intersect_portfolios_price_companyinfo(
             portfolios_df=indutry_portfolios,
-            price_df=prices_cutoff,
+            firms_to_keep=firms_to_keep,
             firm_info_df=firm_info,
         )
     )
 
-    print(industry_portfolios_with_info)
     # Get the constitution of the portfolios
     industry_portfolio_constitution: pd.DataFrame = get_portfolio_constitution(
         industry_portfolios_with_info
@@ -667,7 +712,8 @@ def create_portfolios_and_returns(
 
     # Aggregate the portfolios
     industry_marketcap_portfolios_agg: pd.DataFrame = aggregate_sicportfolio(
-        portfolio=industry_marketcap_portfolios
+        portfolio=industry_marketcap_portfolios,
+        config=config
     )
 
     # Drop non-significant portfolios
@@ -681,6 +727,9 @@ def create_portfolios_and_returns(
         prices_df=stock_prices,
         config=config,
     )
+
+    if config.LOG_INFO:
+        config.logger.info("Successfully created portfolios")
 
     return industry_marketcap_portfolio_returns, industry_marketcap_portfolios_filtered
 

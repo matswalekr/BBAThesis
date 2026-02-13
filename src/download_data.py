@@ -43,11 +43,17 @@ def download_fama_french_factors(
         name=lib_name, data_source=data_course, start=start_date, end=end_date
     )
 
+    monthly_factors: pd.DataFrame = factors[0]
+    yearly_factors: pd.DataFrame = factors[1]
+
+    monthly_factors.index.name = "date"
+    yearly_factors.index.name = "date"
+
     if config.LOG_INFO:
         config.logger.info(
             f"Successfully downloaded Fama-French factors from {lib_name} from {data_course}"
         )
-    return factors[0], factors[1]
+    return monthly_factors, yearly_factors
 
 
 def download_prices_daily_wrds(
@@ -241,6 +247,11 @@ def download_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
     -------
     DATAFRAME_CONTAINER
         Container containing 5 pd.DataFrames with the entire data"""
+    
+    if config.LOG_INFO:
+        config.logger.info(
+            "Starting to download all necessary data for the project...\n" + "-"* 80
+        )
 
     # Connect to WRDS database
     db: wrds.Connection = connect_wrds(config)
@@ -261,6 +272,11 @@ def download_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
     monthly_inflation: pd.Series = download_monthly_inflation(CONFIG)
 
     db.close()
+
+    if config.LOG_INFO:
+        config.logger.info(
+            "Successfully downloaded all necessary data for the project"
+        )
 
     return DATAFRAME_CONTAINER(
         monthly_fama_french=ff5_monthly,
@@ -286,6 +302,11 @@ def save_data(data: DATAFRAME_CONTAINER, config: CONFIGURATION) -> None:
     Returns
     -------
     None"""
+
+    if config.LOG_INFO:
+        config.logger.info(
+            "Starting to save all raw files....\n" + "-"* 80
+        )
 
     # Unpack the container
     ff5_monthly: pd.DataFrame = data.monthly_fama_french

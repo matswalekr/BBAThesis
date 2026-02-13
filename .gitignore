@@ -15,6 +15,9 @@ data/raw/
 data/processed/
 !data/portfolios/
 
+# Logs
+logs/
+
 # Secrets / credentials
 .env
 keys.py

@@ -24,6 +24,9 @@ def download_raw_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
         - stock_prices_raw
         - firm_info_raw
         - sic_desc_raw"""
+    
+    if config.LOG_INFO:
+        config.logger.info("Starting importing raw data....\n" + "-"*80)
 
     factors_monthly_raw: pd.DataFrame = pd.read_csv(
         config.paths.raw_read(FILENAMES.FF5_factors_monthly),
@@ -55,6 +58,9 @@ def download_raw_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
         parse_dates=["date"],
         index_col="date",
     )
+
+    if config.LOG_INFO:
+        config.logger.info("Downloaded all raw data")
 
     return DATAFRAME_CONTAINER(
         monthly_fama_french=factors_monthly_raw,
@@ -98,6 +104,9 @@ def clean_factors(
     factors_monthly_raw_decimal = factors_monthly_raw_newindex / 100
     factors_yearly_raw_decimal = factors_yearly_raw_newindex / 100
 
+    if config.LOG_INFO:
+        config.logger.info("Cleaned the factor data")
+
     return factors_monthly_raw_decimal, factors_yearly_raw_decimal
 
 
@@ -127,7 +136,11 @@ def remove_firms_missing_sharesoutstanding(
         lambda s: s.le(0).sum() / s.size < threshold_missing_shares
     )
 
-    return stock_price[stock_price["gvkey"].isin(mask_activity[mask_activity].index)]
+    result: pd.DataFrame = stock_price[stock_price["gvkey"].isin(mask_activity[mask_activity].index)]
+
+    if config.LOG_INFO:
+        config.logger.info("Removed firms with more than " + str(threshold_missing_shares * 100) + "% of missing shares outstanding data")
+    return result
 
 
 def clean_stock_prices(
@@ -165,11 +178,15 @@ def clean_stock_prices(
         stock_prices_raw, config
     )
 
+    if config.LOG_INFO:
+        config.logger.info("Cleaned the stock prices")
+
     return stock_prices_cleaned
 
 
 def fill_missing_values(
     stock_price: pd.DataFrame,
+    config: CONFIGURATION
 ) -> pd.DataFrame:
     """
     Function to fill the missing dates (weekends are always missing) with the friday's data
@@ -178,6 +195,8 @@ def fill_missing_values(
     ----------
     stock_price : pd.DataFrame
         Dataframe containing the prices and other info that will be filled
+    config: CONFIGURATION
+        Configuration of the project
 
     Returns
     -------
@@ -196,6 +215,11 @@ def fill_missing_values(
         lambda s: s.interpolate(method="linear", limit_area="inside")
     )
 
+    # Reset date as index
+    stock_price.set_index("date", inplace=True)
+
+    if config.LOG_INFO:
+        config.logger.info("Filled missing values in stock prices with forward fill for shares outstanding and linear interpolation for close price")
     return stock_price
 
 
@@ -256,7 +280,10 @@ def intersect_stockprices_monthlyfactors(
     ].sort_index()
 
     # Fill the missing values
-    stock_prices_filled: pd.DataFrame = fill_missing_values(stock_prices_common_date)
+    stock_prices_filled: pd.DataFrame = fill_missing_values(stock_prices_common_date, config)
+
+    if config.LOG_INFO:
+        config.logger.info("Intersected stock prices and monthly factors on common dates index")
 
     return stock_prices_filled
 
@@ -276,6 +303,10 @@ def clean_firm_info(firm_info_raw: pd.DataFrame, config: CONFIGURATION) -> pd.Da
     -------
     pd.DataFrame
         Processed firm info"""
+    
+    if config.LOG_INFO:
+        config.logger.info("Cleaned the firm info")
+
     return firm_info_raw
 
 
@@ -301,6 +332,9 @@ def clean_sic_desc_raw(
 
     # Remove the status column
     sic_desc_raw = sic_desc_raw.drop(columns=["status"])
+
+    if config.LOG_INFO:
+        config.logger.info("Cleaned the SIC description data by removing inactive codes and status column")
 
     return sic_desc_raw
 
@@ -339,6 +373,9 @@ def calculate_cum_inflation_multiplier(
     cum_mult_normalised = cum_mult / cum_mult.iloc[-1]
     monthly_inflation_processed["Inflation multiple"] = cum_mult_normalised
 
+    if config.LOG_INFO:
+        config.logger.info("Calculated the cumulative inflation multiplier from the MoM inflation")
+
     return monthly_inflation_processed 
 
 
@@ -371,6 +408,9 @@ def intersect_stockprices_inflation(
     # Fill missing values with linear interpolation
     inflation_filled: pd.DataFrame = inflation_reindexed.sort_index().interpolate(method="time")
 
+    if config.LOG_INFO:
+        config.logger.info("Intersected stock prices and inflation data on common dates index")
+
     return inflation_filled
 
 
@@ -392,6 +432,8 @@ def save_processed_data(
     -------
     None
     """
+    if config.LOG_INFO:
+        config.logger.info("Starting saving processed files....\n" + "-"*80)
 
     # Unpack the data
     factors_monthly_processed: pd.DataFrame = data.monthly_fama_french
@@ -422,6 +464,9 @@ def save_processed_data(
         config.paths.processed_out(FILENAMES.Inflation_info_monthly)
     )
 
+    if config.LOG_INFO:
+        config.logger.info("Finished saving processed files")
+
     return
 
 
@@ -441,6 +486,9 @@ def clean_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
 
     # Download the data
     raw_data: DATAFRAME_CONTAINER = download_raw_data(config)
+
+    if config.LOG_INFO:
+        config.logger.info("Starting data cleaning process....\n" + "-"*80)
 
     # Process the factor data
     factors_monthly_processed, factors_yearly_processed = clean_factors(
@@ -465,6 +513,9 @@ def clean_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
     cum_inflation_multiplier_intersected: pd.DataFrame = intersect_stockprices_inflation(
         factors_monthly_processed, cum_inflation_multiplier, config
     )
+
+    if config.LOG_INFO:
+        config.logger.info("Completed cleaning process\n")
 
     return DATAFRAME_CONTAINER(
         monthly_fama_french=factors_monthly_processed,

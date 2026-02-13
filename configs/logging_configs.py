@@ -4,26 +4,22 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Literal
 
-import time
 
+class DeltaFilter(logging.Filter):
+    def __init__(self) -> None:
+        super().__init__()
+        self._last_created: float | None = None
 
-class DeltaFormatter(logging.Formatter):
-    def __init__(self, fmt=None, datefmt=None):
-        super().__init__(fmt=fmt, datefmt=datefmt)
-        self._last_time = None
-
-    def format(self, record):
-        current_time = time.time()
-
-        if self._last_time is None:
+    def filter(self, record: logging.LogRecord) -> bool:
+        current = record.created  # seconds since epoch (set by logging)
+        if self._last_created is None:
             delta = 0.0
         else:
-            delta = current_time - self._last_time
+            delta = current - self._last_created
 
-        self._last_time = current_time
-
+        self._last_created = current
         record.delta = f"{delta:8.3f}s"
-        return super().format(record)
+        return True
 
 
 def setup_logging(
@@ -56,26 +52,25 @@ def setup_logging(
     # Ensure directory exists
     log_file.parent.mkdir(parents=True, exist_ok=True)
 
-    # Remove existing handlers (avoids duplicate logs on repeated setup)
+     # Avoid duplicates if setup_logger is called again
     logger.handlers.clear()
+    logger.filters.clear()
 
-    formatter: DeltaFormatter =  DeltaFormatter(
-    "%(asctime)s | +%(delta)s | %(levelname)s | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-    # Rotating file handler
-    file_handler: RotatingFileHandler = RotatingFileHandler(
-        log_file,
-        maxBytes=5_000_000,
-        backupCount=3,
+    formatter = logging.Formatter(
+        "%(asctime)s | +%(delta)s | %(levelname)s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
+
+    file_handler = RotatingFileHandler(log_file, maxBytes=5_000_000, backupCount=3)
     file_handler.setFormatter(formatter)
 
-    # Console handler
-    console_handler: logging.StreamHandler = logging.StreamHandler()
+    console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
 
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
+
+    # Delta computed once per record
+    logger.addFilter(DeltaFilter())
 
     return logger
