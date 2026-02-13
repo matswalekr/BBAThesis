@@ -5,27 +5,25 @@ import pandas as pd
 
 from configs import CONFIG, CONFIGURATION, FILENAMES, DATAFRAME_CONTAINER
 
+
 # utils function to discount values based on inflation
-def inflation_discount(
-    inflation_info: pd.Series,
-    value: float
-) -> pd.Series:
+def inflation_discount(inflation_info: pd.DataFrame, value: float) -> pd.Series:
     """
     Function to discount a given value based on the inflation discount multiples.
-    
+
     Parameters
     ----------
     inflation_info : pd.DataFrame
         DataFrame containing the inflation discount multiples with a datetime index.
     value : float
         The value to be discounted.
-    
+
     Returns
     -------
     pd.Series
         A Series containing the discounted values for each date.
     """
-    inflation_info: pd.DataFrame = inflation_info.copy()
+    inflation_info = inflation_info.copy()
     return inflation_info["Inflation multiple"] * value
 
 
@@ -48,7 +46,7 @@ def download_processed_data(
     """
 
     if config.LOG_INFO:
-        config.logger.info("Starting to download processed data...\n"+ "-"*80)
+        config.logger.info("Starting to download processed data...\n" + "-" * 80)
 
     stock_prices: pd.DataFrame = pd.read_csv(
         config.paths.processed_read(FILENAMES.Stock_prices),
@@ -71,7 +69,8 @@ def download_processed_data(
     )
 
     ff_industry_portfolios: pd.DataFrame = pd.read_csv(
-        config.paths.processed_read(FILENAMES.FF5_industry_portfolios))
+        config.paths.processed_read(FILENAMES.FF5_industry_portfolios)
+    )
 
     if config.LOG_INFO:
         config.logger.info("Successfully downloaded the processed data")
@@ -81,7 +80,7 @@ def download_processed_data(
         firm_info=firm_info,
         sic_info=sic_codes,
         monthly_inflation=inflation,
-        ff_industry_portfolios=ff_industry_portfolios
+        ff_industry_portfolios=ff_industry_portfolios,
     )
 
 
@@ -135,17 +134,21 @@ def apply_marketcap_cutoff_latestperiod(
         stock_prices.loc[latest_date].reset_index().drop_duplicates(subset=["gvkey"])
     )
 
-    result:pd.DataFrame = latest_prices[latest_prices["market_cap"] >= marketcap_cutoff]
+    result: pd.DataFrame = latest_prices[
+        latest_prices["market_cap"] >= marketcap_cutoff
+    ]
 
     if config.LOG_INFO:
-        config.logger.info(f"Applied market cap cutoff of {marketcap_cutoff} to the latest period ({latest_date.date()}). Number of firms after cutoff: {result['gvkey'].nunique()}")
+        config.logger.info(
+            f"Applied market cap cutoff of {marketcap_cutoff} to the latest period ({latest_date.date()}). Number of firms after cutoff: {result['gvkey'].nunique()}"
+        )
 
     return result
 
 
 def apply_marketcap_cutoff_allperiods(
     stock_prices: pd.DataFrame, inflation: pd.DataFrame, config: CONFIGURATION
-)-> pd.DataFrame:
+) -> pd.DataFrame:
     """
     Function to apply a market cap cutoff to the stock prices of all periods, discounting the market cap by inflation.
     Parameters
@@ -175,15 +178,21 @@ def apply_marketcap_cutoff_allperiods(
 
     mask = stock_prices["market_cap"] >= min_marketcap_discounted
     survivors = mask.groupby(stock_prices["gvkey"]).all()
-    filtered_stock_prices = stock_prices[stock_prices["gvkey"].isin(survivors[survivors].index)]
+    filtered_stock_prices = stock_prices[
+        stock_prices["gvkey"].isin(survivors[survivors].index)
+    ]
 
     # Order the filtered stock prices by date and keep only the latest entry for each gvkey
     filtered_stock_prices_lastval = (
-        filtered_stock_prices.sort_index().drop_duplicates(subset=["gvkey"], keep="last").reset_index()
+        filtered_stock_prices.sort_index()
+        .drop_duplicates(subset=["gvkey"], keep="last")
+        .reset_index()
     )
 
     if config.LOG_INFO:
-        config.logger.info(f"Applied market cap cutoff of {min_marketcap} to all periods. Number of firms after cutoff: {filtered_stock_prices['gvkey'].nunique()}")
+        config.logger.info(
+            f"Applied market cap cutoff of {min_marketcap} to all periods. Number of firms after cutoff: {filtered_stock_prices['gvkey'].nunique()}"
+        )
 
     return filtered_stock_prices_lastval
 
@@ -282,7 +291,8 @@ def assign_industry_to_firms_siclevel(
     pd.DataFrame
         Dataframe with the gvkey of the firms, the sic level and the corresponding sic code description at the specified level.
     """
-
+    if config.SIC_LEVEL is None:
+        raise ValueError("SIC_LEVEL must be specified when using SIC code level classification.")
     # Unpack the config:
     sic_level: Literal[1, 2, 3, 4] = config.SIC_LEVEL
 
@@ -293,22 +303,24 @@ def assign_industry_to_firms_siclevel(
     # Merge the two dataframes
     merged = firms.merge(descr, on="sic_level", how="left")
 
-    result: pd.DataFrame = merged[["gvkey", "sic_level", "sicdescription"]].rename(columns={"sic_level": "key", "sicdescription": "industry_name"})
+    result: pd.DataFrame = merged[["gvkey", "sic_level", "sicdescription"]].rename(
+        columns={"sic_level": "key", "sicdescription": "industry_name"}
+    )
 
     if config.LOG_INFO:
-        config.logger.info(f"Successfully assigned an industry to firms using SIC codes at level {sic_level}")
+        config.logger.info(
+            f"Successfully assigned an industry to firms using SIC codes at level {sic_level}"
+        )
 
     return result
 
 
 def assign_industry_firms_ffindustries(
-    firm_descr: pd.DataFrame, 
-    ff_industries: pd.DataFrame, 
-    config: CONFIGURATION
-)->pd.DataFrame:
+    firm_descr: pd.DataFrame, ff_industries: pd.DataFrame, config: CONFIGURATION
+) -> pd.DataFrame:
     """
     Function to assign to each firm its industry based on the Fama-French industry classification.
-    
+
     Parameters
     ----------
     firm_descr : pd.DataFrame
@@ -327,24 +339,28 @@ def assign_industry_firms_ffindustries(
     # Merge the two dataframes
     merged = firm_descr.merge(ff_industries, on="siccode", how="right")
 
-    result: pd.DataFrame = merged[["gvkey", "industry_id", "industry_name"]].rename(columns={"industry_id": "key"})
+    result: pd.DataFrame = merged[["gvkey", "industry_id", "industry_name"]].rename(
+        columns={"industry_id": "key"}
+    )
 
     if config.LOG_INFO:
-        config.logger.info("Successfully assigned industries to firms according to the Fama-French industry portfolios")
+        config.logger.info(
+            "Successfully assigned industries to firms according to the Fama-French industry portfolios"
+        )
 
     return result
 
 
 def assign_industry_to_firms(
-    firm_descr: pd.DataFrame, 
-    sic_descr: pd.DataFrame, 
-    ff_industry_portfolios: pd.DataFrame, 
-    config=CONFIGURATION
-)-> pd.DataFrame:
+    firm_descr: pd.DataFrame,
+    sic_descr: pd.DataFrame,
+    ff_industry_portfolios: pd.DataFrame,
+    config=CONFIGURATION,
+) -> pd.DataFrame:
     """
     Function to assign an industry to each firm based on the configuration.
     This ca either be done according to the SIC code level or the Fama-French industry classification.
-    
+
     Parameters
     ----------
     firm_descr : pd.DataFrame
@@ -355,7 +371,7 @@ def assign_industry_to_firms(
         DataFrame containing Fama-French industry classifications for each SIC-code.
     config : CONFIGURATION
         Configuration of the project.
-        
+
     Returns
     -------
     pd.DataFrame
@@ -365,12 +381,16 @@ def assign_industry_to_firms(
     if config.INDUSTRY_CLASSIFICATION_METHOD == "Sic_level":
         return assign_industry_to_firms_siclevel(firm_descr, sic_descr, config)
     else:
-        return assign_industry_firms_ffindustries(firm_descr, ff_industry_portfolios, config)
+        return assign_industry_firms_ffindustries(
+            firm_descr, ff_industry_portfolios, config
+        )
 
 
 # Portfolio formatting
 def intersect_portfolios_price_companyinfo(
-    industry_assigment: pd.DataFrame, firms_to_keep: pd.DataFrame, firm_info_df: pd.DataFrame
+    industry_assigment: pd.DataFrame,
+    firms_to_keep: pd.DataFrame,
+    firm_info_df: pd.DataFrame,
 ) -> pd.DataFrame:
     """
     Function to intersect the portfolios dataframe with the firm information dataframe.
@@ -505,8 +525,7 @@ def compute_marketcap_portfolios(
 
 
 def aggregate_sicportfolio(
-    portfolio: pd.DataFrame,
-    config: CONFIGURATION
+    portfolio: pd.DataFrame, config: CONFIGURATION
 ) -> pd.DataFrame:
     """
     Function to aggregate the portfolio by SIC description and sort them.
@@ -565,7 +584,9 @@ def drop_nonsignicant_portfolios(
     result: pd.DataFrame = portfolio_df[portfolio_df["num_firms"] >= min_firms]
 
     if config.LOG_INFO:
-        config.logger.info(f"Dropping non-significant portfolios with less than {min_firms} firms")
+        config.logger.info(
+            f"Dropping non-significant portfolios with less than {min_firms} firms"
+        )
 
     return result
 
@@ -708,8 +729,10 @@ def save_portfolio_returns_constitution(
     """
 
     if config.LOG_INFO:
-        config.logger.info("Saving the portfolio returns and constitution details to CSV files...\n"+ "-"*80)
-
+        config.logger.info(
+            "Saving the portfolio returns and constitution details to CSV files...\n"
+            + "-" * 80
+        )
 
     # Save the results
     portfolio_returns.to_csv(config.paths.portfolios_out(FILENAMES.Portfolio_returns))
@@ -718,7 +741,9 @@ def save_portfolio_returns_constitution(
     )
 
     if config.LOG_INFO:
-        config.logger.info("Successfully saved the portfolio returns and constitution details")
+        config.logger.info(
+            "Successfully saved the portfolio returns and constitution details"
+        )
 
     return
 
@@ -743,18 +768,18 @@ def create_portfolios_and_returns(
         One for the returns of the different portfolios
         One for their constitution details
     """
-
     # Dowload the data
     data: DATAFRAME_CONTAINER = download_processed_data(config)
+    if not isinstance(data.monthly_inflation, pd.DataFrame):
+        raise ValueError("Inflation data should be a DataFrame.")
     stock_prices: pd.DataFrame = data.stock_market_info
     firm_info: pd.DataFrame = data.firm_info
-    sic_codes: pd.DataFrame = data.sic_info,
+    sic_codes: pd.DataFrame = data.sic_info
     inflation: pd.DataFrame = data.monthly_inflation
     ff_industry_portfolios: pd.DataFrame = data.ff_industry_portfolios
 
     if config.LOG_INFO:
-        config.logger.info("Starting to create portfolios....\n" + "-"*80)
-
+        config.logger.info("Starting to create portfolios....\n" + "-" * 80)
 
     # Compute the market cap
     stock_prices["market_cap"] = compute_market_cap(
@@ -763,13 +788,20 @@ def create_portfolios_and_returns(
 
     # Apply market cap cutoff to filter the firms
     if config.DISCOUNT_MARKETCAP_FIRM_INFLATION:
-        firms_to_keep: pd.DataFrame = apply_marketcap_cutoff_allperiods(stock_prices, inflation, config)
+        firms_to_keep: pd.DataFrame = apply_marketcap_cutoff_allperiods(
+            stock_prices, inflation, config
+        )
     else:
-        firms_to_keep: pd.DataFrame = apply_marketcap_cutoff_latestperiod(stock_prices, config)
+        firms_to_keep= apply_marketcap_cutoff_latestperiod(
+            stock_prices, config
+        )
 
     # Assign each firm to an industry
     firm_industry_assignment: pd.DataFrame = assign_industry_to_firms(
-        firm_descr=firm_info, sic_descr=sic_codes, ff_industry_portfolios= ff_industry_portfolios, config=config
+        firm_descr=firm_info,
+        sic_descr=sic_codes,
+        ff_industry_portfolios=ff_industry_portfolios,
+        config=config,
     )
 
     # Add the information about firms and their stock prices
@@ -793,8 +825,7 @@ def create_portfolios_and_returns(
 
     # Aggregate the portfolios
     industry_marketcap_portfolios_agg: pd.DataFrame = aggregate_sicportfolio(
-        portfolio=industry_marketcap_portfolios,
-        config=config
+        portfolio=industry_marketcap_portfolios, config=config
     )
 
     # Drop non-significant portfolios

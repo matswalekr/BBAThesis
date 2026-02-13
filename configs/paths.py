@@ -1,6 +1,5 @@
 from enum import StrEnum
 from pathlib import Path
-from typing import Literal
 
 from .schema import PATH_ANALYSIS, PATH_CONFIG, PROJECT_ROOT
 

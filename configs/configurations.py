@@ -3,10 +3,17 @@
 
 import datetime as dt
 
-from .constants import END_PANDEMIC, FACTORS_DATA_SOURCE, FACTORS_LIB, START_PANDEMIC, INFLATION_LIB, INFLATION_SOURCE
+from .constants import (
+    END_PANDEMIC,
+    FACTORS_DATA_SOURCE,
+    FACTORS_LIB,
+    START_PANDEMIC,
+    INFLATION_LIB,
+    INFLATION_SOURCE,
+)
 from .paths import PATHCONFIG
 from .schema import CONFIGURATION, PLOTTING_CONFIGURATIONS
-
+from .logging_configs import setup_logging
 
 CONFIG = CONFIGURATION(
     #########
@@ -17,6 +24,7 @@ CONFIG = CONFIGURATION(
     # Logging #
     ###########
     LOG_INFO=True,
+    logger=setup_logging(name="Thesis", log_file=PATHCONFIG.LOGGING_DIR / "logging.log"),
     ###########
     # Sources #
     ###########
@@ -33,11 +41,10 @@ CONFIG = CONFIGURATION(
     # Data-cleaning configs #
     #########################
     THRESHOLD_MISSING_SHARESOUTSTANDING=0.5,  # Relative threshold of missing sharesoutstanding to drop a ticker
-
     #######################################
     # Industry Portfolio creation configs #
     #######################################
-    INDUSTRY_CLASSIFICATION_METHOD="Fama-French_portfolios", 
+    INDUSTRY_CLASSIFICATION_METHOD="Fama-French_portfolios",
     FAMA_FRENCH_INDUSTRY_PORTFOLIOS="Siccodes48",
     SIC_LEVEL=2,  # SIC code level to use for industry portfolios. The larger, the more granular.
     ##############################
@@ -45,7 +52,7 @@ CONFIG = CONFIGURATION(
     ##############################
     CUTOFF_FIRMS_PER_PORTFOLIO=10,  # Number of firms needed per portfolio
     MIN_MARKETCAP_FIRM=100_000.0,  # Minimum latest market cap needed for a firm to be considered
-    DISCOUNT_MARKETCAP_FIRM_INFLATION = True, # Discount the marketcap of firms. If this is used, then the minimum market cap is in real terms, not nominal and applied to each period.
+    DISCOUNT_MARKETCAP_FIRM_INFLATION=True,  # Discount the marketcap of firms. If this is used, then the minimum market cap is in real terms, not nominal and applied to each period.
     PORTFOLIO_AGGREGATION_METHOD="MarketCap",  # Method to aggregate firms into portfolios
     ########################
     # Model configurations #

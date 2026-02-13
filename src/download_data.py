@@ -1,6 +1,6 @@
 import datetime as dt
 import warnings
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, Tuple, Union, cast, Optional
 import re
 
 import pandas as pd
@@ -160,13 +160,11 @@ def download_sic_description_wrds(
         config.logger.info(
             "Successfully downloaded firm information for the observable universe of stocks from WRDS"
         )
-    
+
     return result
 
 
-def download_monthly_inflation(
-    config: CONFIGURATION
-)->pd.Series:
+def download_monthly_inflation(config: CONFIGURATION) -> pd.Series:
     """
     Function to download monthly inflation data for the entire period to discount values using the time value of money.
     This is the MoM inflation, not inflation compared to previous year.
@@ -180,7 +178,7 @@ def download_monthly_inflation(
     -------
     pd.Series
         Series containing MoM inflation
-    
+
     """
     # Unpack the config
     start_date: dt.datetime = config.START_DATE_FACTORS_DOWNLOAD - dt.timedelta(days=31)
@@ -189,14 +187,15 @@ def download_monthly_inflation(
     inflation_lib: str = config.INFLATION_LIB
     inflation_source: str = config.INFLATION_SOURCE
 
-    cpi: Any = web.DataReader(name = inflation_source,
-                         data_source=inflation_lib, 
-                         start= start_date,
-                         end=end_date)
-    
+    cpi: Any = web.DataReader(
+        name=inflation_source, data_source=inflation_lib, start=start_date, end=end_date
+    )
+
     if not isinstance(cpi, pd.DataFrame):
-        raise ValueError(f"cpi object downloaded from {inflation_lib} is of type {type(cpi)} and not pd.DataFrame")
-    
+        raise ValueError(
+            f"cpi object downloaded from {inflation_lib} is of type {type(cpi)} and not pd.DataFrame"
+        )
+
     monthly_inflation: pd.Series = cpi["CPIAUCSL"].pct_change(1, fill_method=None)
 
     monthly_inflation.name = "MoM inflation"
@@ -213,12 +212,12 @@ def download_monthly_inflation(
 def connect_wrds(config: CONFIGURATION) -> wrds.Connection:
     """
     Function to connect to the WRDS database using the credentials specified in the configuration.
-    
+
     Parameters
     ----------
     config : CONFIGURATION
         Configuration of the project
-    
+
     Returns
     -------
     wrds.Connection
@@ -239,7 +238,7 @@ def connect_wrds(config: CONFIGURATION) -> wrds.Connection:
 def import_ff_portfolios(config: CONFIGURATION) -> pd.DataFrame:
     """
     Function to import the Fama-French portfolios from the downloaded files.
-    
+
     Parameters
     ----------
     config : CONFIGURATION
@@ -260,7 +259,11 @@ def import_ff_portfolios(config: CONFIGURATION) -> pd.DataFrame:
     header_blueprint: str = r"^\s*(\d+)\s+(\w+)\s+(.*)$"
     sic_blueprint: str = r"^\s*(\d{4})-(\d{4})\s+(.*)$"
 
-    with open(config.paths.read_raw_txt(config.FAMA_FRENCH_INDUSTRY_PORTFOLIOS), "r", encoding="utf-8") as f:
+    with open(
+        config.paths.read_raw_txt(cast(str, config.FAMA_FRENCH_INDUSTRY_PORTFOLIOS)),
+        "r",
+        encoding="utf-8",
+    ) as f:
         for line in f:
             line = line.rstrip()
 
@@ -282,14 +285,16 @@ def import_ff_portfolios(config: CONFIGURATION) -> pd.DataFrame:
                 sic_end = int(sic_match.group(2))
                 sic_desc = sic_match.group(3).strip()
 
-                rows.append({
-                    "industry_id": current_industry_id,
-                    "industry_short": current_short,
-                    "industry_name": current_name,
-                    "sic_start": sic_start,
-                    "sic_end": sic_end,
-                    "sic_description": sic_desc
-                })
+                rows.append(
+                    {
+                        "industry_id": current_industry_id,
+                        "industry_short": current_short,
+                        "industry_name": current_name,
+                        "sic_start": sic_start,
+                        "sic_end": sic_end,
+                        "sic_description": sic_desc,
+                    }
+                )
 
     if config.LOG_INFO:
         config.logger.info(
@@ -311,10 +316,10 @@ def download_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
     -------
     DATAFRAME_CONTAINER
         Container containing 5 pd.DataFrames with the entire data"""
-    
+
     if config.LOG_INFO:
         config.logger.info(
-            "Starting to download all necessary data for the project...\n" + "-"* 80
+            "Starting to download all necessary data for the project...\n" + "-" * 80
         )
 
     # Connect to WRDS database
@@ -341,9 +346,7 @@ def download_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
     monthly_inflation: pd.Series = download_monthly_inflation(config)
 
     if config.LOG_INFO:
-        config.logger.info(
-            "Successfully downloaded all necessary data for the project"
-        )
+        config.logger.info("Successfully downloaded all necessary data for the project")
 
     return DATAFRAME_CONTAINER(
         monthly_fama_french=ff5_monthly,
@@ -352,7 +355,7 @@ def download_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
         firm_info=firm_info,
         sic_info=sic_codes,
         monthly_inflation=monthly_inflation,
-        ff_industry_portfolios=ff_industry_portfolios
+        ff_industry_portfolios=ff_industry_portfolios,
     )
 
 
@@ -372,18 +375,18 @@ def save_data(data: DATAFRAME_CONTAINER, config: CONFIGURATION) -> None:
     None"""
 
     if config.LOG_INFO:
-        config.logger.info(
-            "Starting to save all raw files....\n" + "-"* 80
-        )
+        config.logger.info("Starting to save all raw files....\n" + "-" * 80)
 
     # Unpack the container
-    ff5_monthly: pd.DataFrame = data.monthly_fama_french
-    ff5_yearly: pd.DataFrame = data.yearly_fama_french
+    ff5_monthly: Optional[pd.DataFrame] = data.monthly_fama_french
+    ff5_yearly: Optional[pd.DataFrame] = data.yearly_fama_french
+    if ff5_monthly is None or ff5_yearly is None:
+        raise ValueError("Fama-French factors data frames cannot be None")
     prices_obs_universe: pd.DataFrame = data.stock_market_info
     firm_info: pd.DataFrame = data.firm_info
     sic_codes: pd.DataFrame = data.sic_info
-    monthly_inflation: pd.DataFrame = data.monthly_inflation
-    ff_industry_portfolios:pd.DataFrame = data.ff_industry_portfolios
+    monthly_inflation: Union[pd.DataFrame, pd.Series] = data.monthly_inflation
+    ff_industry_portfolios: pd.DataFrame = data.ff_industry_portfolios
 
     ff5_monthly.to_csv(CONFIG.paths.raw_out(FILENAMES.FF5_factors_monthly))
     ff5_yearly.to_csv(CONFIG.paths.raw_out(FILENAMES.FF5_factors_yearly))
@@ -396,14 +399,16 @@ def save_data(data: DATAFRAME_CONTAINER, config: CONFIGURATION) -> None:
 
     sic_codes.to_csv(CONFIG.paths.raw_out(FILENAMES.Sic_description), index=False)
 
-    monthly_inflation.to_csv(CONFIG.paths.raw_out(FILENAMES.Inflation_info_monthly), index=True)
+    monthly_inflation.to_csv(
+        CONFIG.paths.raw_out(FILENAMES.Inflation_info_monthly), index=True
+    )
 
-    ff_industry_portfolios.to_csv(CONFIG.paths.raw_out(FILENAMES.FF5_industry_portfolios), index=False)
+    ff_industry_portfolios.to_csv(
+        CONFIG.paths.raw_out(FILENAMES.FF5_industry_portfolios), index=False
+    )
 
     if config.LOG_INFO:
-        config.logger.info(
-            "Successfully saved all raw data files"
-        )
+        config.logger.info("Successfully saved all raw data files")
 
     return
 

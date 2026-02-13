@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from cycler import cycler, Cycler
+from cycler import cycler
 from typing import List, Any, Iterator, Sequence, Hashable, Dict
 import numpy as np
 

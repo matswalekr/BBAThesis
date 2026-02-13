@@ -23,13 +23,13 @@ class DeltaFilter(logging.Filter):
 
 
 def setup_logging(
-    name: str, 
+    name: str,
     log_file: Path,
     level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO",
-)->logging.Logger:
+) -> logging.Logger:
     """
     Function to initialise the logging configuration for the application.
-    
+
     Parameters
     ----------
     name: str
@@ -38,7 +38,7 @@ def setup_logging(
         The path to the log file where logs will be written.
     level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
         The logging level to set for the logger. Defaults to "INFO".
-    
+
     Returns
     -------
     logging.Logger
@@ -52,7 +52,7 @@ def setup_logging(
     # Ensure directory exists
     log_file.parent.mkdir(parents=True, exist_ok=True)
 
-     # Avoid duplicates if setup_logger is called again
+    # Avoid duplicates if setup_logger is called again
     logger.handlers.clear()
     logger.filters.clear()
 

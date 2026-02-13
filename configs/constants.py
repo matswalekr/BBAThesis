@@ -10,7 +10,7 @@ FACTORS_LIB: str = "F-F_Research_Data_5_Factors_2x3"
 # Name of the data source within the library
 FACTORS_DATA_SOURCE: str = "famafrench"
 
-# Name of the library for inflation info in pandas datareader
+# Name of the library for inflation info in pandas datareader
 INFLATION_LIB: str = "fred"
 
 # Name of the data source for monthly inflation info in pandas datareader
