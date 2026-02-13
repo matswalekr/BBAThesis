@@ -44,11 +44,15 @@ def download_processed_data(
         index_col="date",
     )
 
+    if config.LOG_INFO:
+        config.logger.info(
+            "Downloaded processed data successfully")
+
     return ff_factors_monthly, ff_factors_yearly, portfolio_returns_monthly
 
 
 def extract_factor_loadings(
-    factors: pd.DataFrame, returns: Union[pd.Series, pd.DataFrame], rf_label: str = "RF"
+    factors: pd.DataFrame, config: CONFIGURATION, returns: Union[pd.Series, pd.DataFrame], rf_label: str = "RF"
 ) -> pd.DataFrame:
     """
     Function to perform a linear regression for a factor model (e.g., Fama-French 5-Factor Model).
@@ -63,6 +67,8 @@ def extract_factor_loadings(
         Expects a column of the risk-free rate (canonically called RF).
         Expects a datetime index.
         Expects absolute factors as a number (not percentages).
+    config: CONFIGURATION
+        Configurations of the model
     returns : Union[pd.Series, pd.DataFrame]∫
         Series containing the dependent variable (asset returns).
         Expects a datetime index.
@@ -133,10 +139,17 @@ def extract_factor_loadings(
             excess_return = returns_aligned[ticker] - factors_aligned[rf_label]
             results[ticker] = lin_reg(X, excess_return)
 
+        if config.LOG_INFO:
+            config.logger.info(
+                "Extracted factor loadings successfully for multiple stocks")
         return pd.DataFrame(results)
 
     # Case when working with one stock
-    else:
+    else:        
+        if config.LOG_INFO:
+            config.logger.info(
+                "Extracted factor loadings successfully for one stock")
+            
         excess_return = returns_aligned - factors_aligned[rf_label]
         return lin_reg(X, excess_return).to_frame(name="Asset")
 
@@ -144,6 +157,7 @@ def extract_factor_loadings(
 def factor_model_return_predictor(
     factor_values: pd.DataFrame,
     factor_loadings: pd.DataFrame,
+    config: CONFIGURATION,
     rf_label: str = "RF",
     beta_label: str = "Beta",
 ) -> pd.DataFrame:
@@ -163,6 +177,8 @@ def factor_model_return_predictor(
         DataFrame containing the factor loadings for each asset.
         Expects the columns to be the asset ticker.
         Expects a MultiIndex with levels ["Statistic", "Factor"].
+    config: CONFIGURATION
+        Configurations of the model
     rf_label : str = "RF"
         Optional argument to specify the label of the column in X representing the risk-free rate.
         Default is "RF"
@@ -193,11 +209,14 @@ def factor_model_return_predictor(
 
         out[ticker] = pred_excess + factor_values[rf_label]
 
+    if config.LOG_INFO:
+        config.logger.info(
+            "Predicted returns successfully using the factor model")
     return pd.DataFrame(out, index=factor_values.index)
 
 
 def compare_pred_actual(
-    pred_return_monthly: pd.DataFrame, portfolio_returns_monthly: pd.DataFrame
+    pred_return_monthly: pd.DataFrame, portfolio_returns_monthly: pd.DataFrame, config: CONFIGURATION
 ) -> pd.DataFrame:
     """
     Function to compare the predicted and actual return and add the residual
@@ -208,6 +227,8 @@ def compare_pred_actual(
         The predicted returns per month
     portfolio_returns_monthly : pd.DataFrame
         The actual returns per month
+    config: CONFIGURATION
+        Configurations of the model
 
     Returns
     -------
@@ -229,6 +250,10 @@ def compare_pred_actual(
         0, 1, axis=1
     ).sort_index(axis=1)
 
+    if config.LOG_INFO:
+        config.logger.info(
+            "Compared predicted and actual returns successfully")
+        
     return comparison_monthly_returns
 
 
@@ -305,6 +330,10 @@ def t_test_significance(
     sig_df = pd.DataFrame(significance.values, index=new_index, columns=t_stats.columns)
     model_parameters = pd.concat([model_parameters, sig_df])
 
+    if config.LOG_INFO:
+        config.logger.info(
+            "Tested the significance of model parameters successfully")
+        
     return model_parameters
 
 
@@ -523,6 +552,7 @@ def factor_loadings_over_time(
                 cast(Any, start_date) : cast(Any, end_date)
             ],  # Cast for typechecker
             rf_label=rf_label,
+            config=config
         )
         for label, (start_date, end_date) in date_ranges.items()
     }
@@ -534,6 +564,11 @@ def factor_loadings_over_time(
 
     # Inverse the level of the column multi-index
     outcome = outcome.swaplevel("date Range", "Ticker", axis=1)
+
+    if config.LOG_INFO:
+        config.logger.info(
+            "Computed factor loadings for different time periods successfully")
+        
     return outcome
 
 
@@ -563,17 +598,17 @@ def build_model(
 
     # Extract the factors
     factor_loadings_monthly = extract_factor_loadings(
-        factors=ff_factors_monthly, returns=portfolio_returns_monthly
+        factors=ff_factors_monthly, returns=portfolio_returns_monthly, config=config
     )
 
     # Predict the returns according to the model
     pred_return_monthly: pd.DataFrame = factor_model_return_predictor(
-        factor_values=ff_factors_monthly, factor_loadings=factor_loadings_monthly
+        factor_values=ff_factors_monthly, factor_loadings=factor_loadings_monthly, config=config
     )
 
     # Compare predicted and actual
     comparison_monthly_returns: pd.DataFrame = compare_pred_actual(
-        pred_return_monthly, portfolio_returns_monthly
+        pred_return_monthly, portfolio_returns_monthly, config=config
     )
 
     # Test the significance using the t-test
@@ -624,6 +659,10 @@ def save_model(
     ff_factors_over_time.to_csv(
         config.paths.results_out(FILENAMES.Factor_loadings_differentperiods)
     )
+
+    if config.LOG_INFO:
+        config.logger.info(
+            "Saved model results successfully")
 
 
 def build_save_model(config: CONFIGURATION) -> None:
