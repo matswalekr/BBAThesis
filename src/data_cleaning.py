@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, List, Dict, Union
 
 import pandas as pd
 
@@ -59,6 +59,9 @@ def download_raw_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
         index_col="date",
     )
 
+    ff_industry_portfolios_raw:pd.DataFrame = pd.read_csv(
+        config.paths.raw_read(FILENAMES.FF5_industry_portfolios))
+
     if config.LOG_INFO:
         config.logger.info("Downloaded all raw data")
 
@@ -68,7 +71,8 @@ def download_raw_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
         stock_market_info=stock_prices_raw,
         firm_info=firm_info_raw,
         sic_info=sic_desc_raw,
-        monthly_inflation=monthly_inflation_info_raw
+        monthly_inflation=monthly_inflation_info_raw,
+        ff_industry_portfolios=ff_industry_portfolios_raw
     )
 
 
@@ -108,6 +112,45 @@ def clean_factors(
         config.logger.info("Cleaned the factor data")
 
     return factors_monthly_raw_decimal, factors_yearly_raw_decimal
+
+def clean_ff_industry_portfolio(
+    ff_industry_portfolios_raw: pd.DataFrame,
+    config: CONFIGURATION
+)-> pd.DataFrame:
+    """
+    Function to clean the Fama French industry portfolio data.
+    Aggregates the data to a single row per industry portfolio.
+    
+    Parameters
+    ----------
+    ff_industry_portfolios_raw: pd.DataFrame
+        Raw Fama French industry portfolio data
+    config: CONFIGURATION
+        Configuration of the project
+        
+    Returns
+    -------
+    pd.DataFrame
+        Cleaned Fama French industry portfolio data with one row per industry and date
+    """
+
+    # Different sic codes
+    sic_codes: List[Dict[str, Union[str, int]]] = []
+
+    for _, row in ff_industry_portfolios_raw.iterrows():
+        # Case when the range of sic is just one key
+        if row["sic_start"] == row["sic_end"]:
+            sic_codes.append(
+                {"siccode": row["sic_start"], "industry_name": row["industry_name"], "industry_id": row["industry_id"]}
+            )
+        else:
+            for i in range(row["sic_start"], row["sic_end"]+1):
+                sic_codes.append({"siccode": i, "industry_name": row["industry_name"], "industry_id": row["industry_id"]})
+
+    if config.LOG_INFO:
+        config.logger.info("Finisehd cleaning Fama French industry portfolio data by aggregating to one row per industry and date")
+
+    return pd.DataFrame(sic_codes)
 
 
 def remove_firms_missing_sharesoutstanding(
@@ -442,6 +485,7 @@ def save_processed_data(
     firm_info_processed: pd.DataFrame = data.firm_info
     sic_desc_processed: pd.DataFrame = data.sic_info
     inflation_processed: pd.DataFrame = data.monthly_inflation
+    ff_industry_portfolios_processed: pd.DataFrame = data.ff_industry_portfolios
 
     factors_monthly_processed.to_csv(
         config.paths.processed_out(FILENAMES.FF5_factors_monthly)
@@ -462,6 +506,9 @@ def save_processed_data(
 
     inflation_processed.to_csv(
         config.paths.processed_out(FILENAMES.Inflation_info_monthly)
+    )
+    ff_industry_portfolios_processed.to_csv(
+        config.paths.processed_out(FILENAMES.FF5_industry_portfolios), index=False
     )
 
     if config.LOG_INFO:
@@ -494,6 +541,10 @@ def clean_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
     factors_monthly_processed, factors_yearly_processed = clean_factors(
         raw_data.monthly_fama_french, raw_data.yearly_fama_french, config
     )
+    # Process the industry portfolio data
+    ff_industry_portfolio_processed: pd.DataFrame = clean_ff_industry_portfolio(
+        raw_data.ff_industry_portfolios, config
+    )
 
     # Clean the stock data
     stock_prices_cleaned: pd.DataFrame = clean_stock_prices(raw_data.stock_market_info, config)
@@ -523,7 +574,8 @@ def clean_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
         stock_market_info=stock_prices_intersected,
         firm_info=firm_info_processed,
         sic_info=sic_desc_processed,
-        monthly_inflation=cum_inflation_multiplier_intersected
+        monthly_inflation=cum_inflation_multiplier_intersected,
+        ff_industry_portfolios=ff_industry_portfolio_processed,
     )
 
 

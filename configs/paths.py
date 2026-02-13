@@ -52,8 +52,8 @@ class FILENAMES(StrEnum):
     FF5_factors_monthly = "fama_french_monthly_factors"
     FF5_factors_yearly = "fama_french_yearly_factors"
 
-    # FF-Portfolio
-    ff_portfolios: Literal["Siccodes5", "Siccodes17", "Siccodes30", "Siccodes38", "Siccodes48", "Siccodes49"] = "Siccodes30"
+    # FF-portfolios
+    FF5_industry_portfolios = "fama_french_industry_portfolios"
 
     # Stock info files
     Stock_prices = "stock_prices_wrds_monthly_obs_universe"

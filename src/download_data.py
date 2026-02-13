@@ -1,6 +1,7 @@
 import datetime as dt
 import warnings
 from typing import Any, Dict, Tuple, Union
+import re
 
 import pandas as pd
 import pandas_datareader.data as web
@@ -235,6 +236,69 @@ def connect_wrds(config: CONFIGURATION) -> wrds.Connection:
     return db
 
 
+def import_ff_portfolios(config: CONFIGURATION) -> pd.DataFrame:
+    """
+    Function to import the Fama-French portfolios from the downloaded files.
+    
+    Parameters
+    ----------
+    config : CONFIGURATION
+        Configuration of the project
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing the Fama-French portfolios
+    """
+
+    rows = []
+
+    current_industry_id = None
+    current_short = None
+    current_name = None
+
+    header_blueprint: str = r"^\s*(\d+)\s+(\w+)\s+(.*)$"
+    sic_blueprint: str = r"^\s*(\d{4})-(\d{4})\s+(.*)$"
+
+    with open(config.paths.read_raw_txt(config.FAMA_FRENCH_INDUSTRY_PORTFOLIOS), "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.rstrip()
+
+            if not line.strip():
+                continue
+
+            # Match industry header line (e.g. "1 Food   Food")
+            header_match = re.match(header_blueprint, line)
+            if header_match:
+                current_industry_id = int(header_match.group(1))
+                current_short = header_match.group(2)
+                current_name = header_match.group(3).strip()
+                continue
+
+            # Match SIC range line (e.g. "0100-0199 Agricultural production - crops")
+            sic_match = re.match(sic_blueprint, line)
+            if sic_match:
+                sic_start = int(sic_match.group(1))
+                sic_end = int(sic_match.group(2))
+                sic_desc = sic_match.group(3).strip()
+
+                rows.append({
+                    "industry_id": current_industry_id,
+                    "industry_short": current_short,
+                    "industry_name": current_name,
+                    "sic_start": sic_start,
+                    "sic_end": sic_end,
+                    "sic_description": sic_desc
+                })
+
+    if config.LOG_INFO:
+        config.logger.info(
+            f"Successfully imported Fama-French industry portfolios from {config.FAMA_FRENCH_INDUSTRY_PORTFOLIOS}.txt"
+        )
+
+    return pd.DataFrame(rows)
+
+
 # Main functions
 def download_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
     """Donwloads the entire data necessary for the project.
@@ -256,22 +320,25 @@ def download_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
     # Connect to WRDS database
     db: wrds.Connection = connect_wrds(config)
 
-    # Download fama french data
-    ff5_monthly, ff5_yearly = download_fama_french_factors(CONFIG)
-
     # Download the prices data
-    prices_obs_universe = download_prices_daily_wrds(db, CONFIG)
+    prices_obs_universe = download_prices_daily_wrds(db, config)
 
     # Download the firm info
-    firm_info: pd.DataFrame = download_firm_info_wrds(db, CONFIG)
+    firm_info: pd.DataFrame = download_firm_info_wrds(db, config)
 
     # Download sic codes
-    sic_codes: pd.DataFrame = download_sic_description_wrds(db, CONFIG)
-
-    # Download inflation information
-    monthly_inflation: pd.Series = download_monthly_inflation(CONFIG)
+    sic_codes: pd.DataFrame = download_sic_description_wrds(db, config)
 
     db.close()
+
+    # Download fama french data
+    ff5_monthly, ff5_yearly = download_fama_french_factors(config)
+
+    # Import the fama-french portfolios from the downloaded txt file
+    ff_industry_portfolios: pd.DataFrame = import_ff_portfolios(config)
+
+    # Download inflation information
+    monthly_inflation: pd.Series = download_monthly_inflation(config)
 
     if config.LOG_INFO:
         config.logger.info(
@@ -284,7 +351,8 @@ def download_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
         stock_market_info=prices_obs_universe,
         firm_info=firm_info,
         sic_info=sic_codes,
-        monthly_inflation=monthly_inflation
+        monthly_inflation=monthly_inflation,
+        ff_industry_portfolios=ff_industry_portfolios
     )
 
 
@@ -315,6 +383,7 @@ def save_data(data: DATAFRAME_CONTAINER, config: CONFIGURATION) -> None:
     firm_info: pd.DataFrame = data.firm_info
     sic_codes: pd.DataFrame = data.sic_info
     monthly_inflation: pd.DataFrame = data.monthly_inflation
+    ff_industry_portfolios:pd.DataFrame = data.ff_industry_portfolios
 
     ff5_monthly.to_csv(CONFIG.paths.raw_out(FILENAMES.FF5_factors_monthly))
     ff5_yearly.to_csv(CONFIG.paths.raw_out(FILENAMES.FF5_factors_yearly))
@@ -328,6 +397,8 @@ def save_data(data: DATAFRAME_CONTAINER, config: CONFIGURATION) -> None:
     sic_codes.to_csv(CONFIG.paths.raw_out(FILENAMES.Sic_description), index=False)
 
     monthly_inflation.to_csv(CONFIG.paths.raw_out(FILENAMES.Inflation_info_monthly), index=True)
+
+    ff_industry_portfolios.to_csv(CONFIG.paths.raw_out(FILENAMES.FF5_industry_portfolios), index=False)
 
     if config.LOG_INFO:
         config.logger.info(

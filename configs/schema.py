@@ -101,7 +101,7 @@ class BasePathConfig:
             suffix = self.suffix
 
         directory: Path = self.get_directory(type_)
-
+    
         return directory / f"{stem}_{type_}_{date}{suffix}"
 
     def create_filename_with_date(
@@ -257,6 +257,10 @@ class PATH_CONFIG(BasePathConfig):
 
     def sql_query(self, stem: str) -> Path:
         return self.SQL_DIR / f"{stem}.sql"
+    
+    def read_raw_txt(self, stem: str) -> Path:
+        return self.get_latest(stem=stem, type_="raw", suffix=".txt")
+
 
 
 # Configurations of the entire project
@@ -288,7 +292,9 @@ class CONFIGURATION:
     CUTOFF_FIRMS_PER_PORTFOLIO: int
     MIN_MARKETCAP_FIRM: float
     DISCOUNT_MARKETCAP_FIRM_INFLATION: bool
-    SIC_LEVEL: Literal[1, 2, 3, 4]
+    INDUSTRY_CLASSIFICATION_METHOD: Literal["Sic_level", "Fama-French_portfolios"]
+    FAMA_FRENCH_INDUSTRY_PORTFOLIOS: Optional[Literal["Siccodes5", "Siccodes17", "Siccodes30", "Siccodes38", "Siccodes48", "Siccodes49"]]
+    SIC_LEVEL: Optional[Literal[1, 2, 3, 4]]
     PORTFOLIO_AGGREGATION_METHOD: Literal["MarketCap", "Equal"]
 
     # Model configurations
@@ -315,6 +321,22 @@ class CONFIGURATION:
             raise ValueError(
                 "END_DATE_FACTORS_DOWNLOAD must be after START_DATE_FACTORS_DOWNLOAD"
             )
+
+        if self.INDUSTRY_CLASSIFICATION_METHOD not in {"Sic_level", "Fama-French_portfolios"}:
+            raise ValueError(
+                "INDUSTRY_CLASSIFICATION_METHOD must be 'Sic_level' or 'Fama-French_portfolios'"
+            )
+        
+        if self.INDUSTRY_CLASSIFICATION_METHOD == "Sic_level" and self.SIC_LEVEL is None:
+            raise ValueError("SIC_LEVEL must be provided when INDUSTRY_CLASSIFICATION_METHOD is 'Sic_level'")
+        
+        if self.INDUSTRY_CLASSIFICATION_METHOD == "Fama-French_portfolios":
+            if self.FAMA_FRENCH_INDUSTRY_PORTFOLIOS is None:
+                raise ValueError("FAMA_FRENCH_INDUSTRY_PORTFOLIOS must be provided when INDUSTRY_CLASSIFICATION_METHOD is 'Fama-French_portfolios'")
+            else:
+                if self.FAMA_FRENCH_INDUSTRY_PORTFOLIOS not in {"Siccodes5", "Siccodes17", "Siccodes30", "Siccodes38", "Siccodes48", "Siccodes49"}:
+                    raise ValueError("FAMA_FRENCH_INDUSTRY_PORTFOLIOS must be one of {'Siccodes5', 'Siccodes17', 'Siccodes30', 'Siccodes38', 'Siccodes48', 'Siccodes49'}")
+
 
         if self.CUTOFF_FIRMS_PER_PORTFOLIO < 0:
             raise ValueError("CUTOFF_FIRMS_PER_PORTFOLIO must be positive")
@@ -383,3 +405,4 @@ class DATAFRAME_CONTAINER:
     firm_info: pd.DataFrame
     sic_info: pd.DataFrame
     monthly_inflation: pd.Series
+    ff_industry_portfolios: pd.DataFrame

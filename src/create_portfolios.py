@@ -70,10 +70,13 @@ def get_stockprices_firminfo_siccodes_inflation(
         index_col="date",
     )
 
+    ff_industry_portfolios: pd.DataFrame = pd.read_csv(
+        config.paths.processed_read(FILENAMES.FF5_industry_portfolios))
+
     if config.LOG_INFO:
         config.logger.info("Successfully downloaded the processed data")
 
-    return stock_prices, firm_info, sic_codes, inflation
+    return stock_prices, firm_info, sic_codes, inflation, ff_industry_portfolios
 
 
 # Compute and cutoff MarketCap
@@ -179,7 +182,7 @@ def apply_marketcap_cutoff_allperiods(
     return filtered_stock_prices_lastval
 
 
-# Create Industry Portfolios from SIC-Codes
+# Create Industry Portfolios
 def format_sic_codes(
     sic_descr: pd.DataFrame, level: Literal[1, 2, 3, 4], sic_col: str = "siccode"
 ) -> pd.DataFrame:
@@ -251,11 +254,11 @@ def format_firms_sic(
     return firms
 
 
-def compute_industry_portfolios_sic(
+def assign_industry_to_firms_siclevel(
     firm_descr: pd.DataFrame, sic_descr: pd.DataFrame, config: CONFIGURATION
 ) -> pd.DataFrame:
     """
-    Function to group the firms by industry.
+    Function to assign the firms to a specific industry by sic code level.
     This is done using their sic codes and a sic code description dataframe.
     The firms can be grouped according to different levels of the sic code hierarchy.
 
@@ -271,7 +274,7 @@ def compute_industry_portfolios_sic(
     Returns
     -------
     pd.DataFrame
-        Dataframe with firms grouped by the specified sic code level.
+        Dataframe with the gvkey of the firms, the sic level and the corresponding sic code description at the specified level.
     """
 
     # Unpack the config:
@@ -284,25 +287,92 @@ def compute_industry_portfolios_sic(
     # Merge the two dataframes
     merged = firms.merge(descr, on="sic_level", how="left")
 
-    result: pd.DataFrame = merged[["gvkey", "sic_level", "sicdescription"]]
+    result: pd.DataFrame = merged[["gvkey", "sic_level", "sicdescription"]].rename(columns={"sic_level": "key", "sicdescription": "industry_name"})
 
     if config.LOG_INFO:
-        config.logger.info(f"Successfully computed the industry portfolios using SIC codes at level {sic_level}")
+        config.logger.info(f"Successfully assigned an industry to firms using SIC codes at level {sic_level}")
 
     return result
 
 
+def assign_industry_firms_ffindustries(
+    firm_descr: pd.DataFrame, 
+    ff_industries: pd.DataFrame, 
+    config: CONFIGURATION
+)->pd.DataFrame:
+    """
+    Function to assign to each firm its industry based on the Fama-French industry classification.
+    
+    Parameters
+    ----------
+    firm_descr : pd.DataFrame
+        DataFrame containing firm information including SIC codes.
+    ff_industries : pd.DataFrame
+        DataFrame containing Fama-French industry classifications for each SIC-code.
+    config : CONFIGURATION
+        Configuration of the project.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with the gvkey of the firms and their corresponding Fama-French industry classification.
+    """
+
+    # Merge the two dataframes
+    merged = firm_descr.merge(ff_industries, on="siccode", how="right")
+
+    result: pd.DataFrame = merged[["gvkey", "industry_id", "industry_name"]].rename(columns={"industry_id": "key"})
+
+    if config.LOG_INFO:
+        config.logger.info("Successfully assigned industries to firms according to the Fama-French industry portfolios")
+
+    return result
+
+
+def assign_industry_to_firms(
+    firm_descr: pd.DataFrame, 
+    sic_descr: pd.DataFrame, 
+    ff_industry_portfolios: pd.DataFrame, 
+    config=CONFIGURATION
+)-> pd.DataFrame:
+    """
+    Function to assign an industry to each firm based on the configuration.
+    This ca either be done according to the SIC code level or the Fama-French industry classification.
+    
+    Parameters
+    ----------
+    firm_descr : pd.DataFrame
+        DataFrame containing firm information including SIC codes.
+    sic_descr : pd.DataFrame
+        DataFrame containing SIC code descriptions.
+    ff_industry_portfolios : pd.DataFrame
+        DataFrame containing Fama-French industry classifications for each SIC-code.
+    config : CONFIGURATION
+        Configuration of the project.
+        
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with the gvkey of the firms and their corresponding industry classification according to the configuration.
+    """
+
+    if config.INDUSTRY_CLASSIFICATION_METHOD == "Sic_level":
+        return assign_industry_to_firms_siclevel(firm_descr, sic_descr, config)
+    else:
+        return assign_industry_firms_ffindustries(firm_descr, ff_industry_portfolios, config)
+
+
 # Portfolio formatting
 def intersect_portfolios_price_companyinfo(
-    portfolios_df: pd.DataFrame, firms_to_keep: pd.DataFrame, firm_info_df: pd.DataFrame
+    industry_assigment: pd.DataFrame, firms_to_keep: pd.DataFrame, firm_info_df: pd.DataFrame
 ) -> pd.DataFrame:
     """
     Function to intersect the portfolios dataframe with the firm information dataframe.
 
     Parameters
     ----------
-    portfolios_df : pd.DataFrame
-        DataFrame containing portfolio information.
+    industry_assigment : pd.DataFrame
+        DataFrame containing information of which industry to assign a firm to.
     firms_to_keep: pd.DataFrame
         Dataframe containing the prices info
     firm_info_df : pd.DataFrame
@@ -313,7 +383,7 @@ def intersect_portfolios_price_companyinfo(
     pd.DataFrame
         A DataFrame containing only the firms that are present in both the portfolios and firm information dataframes.
     """
-    final_portfolio: pd.DataFrame = portfolios_df.merge(
+    final_portfolio: pd.DataFrame = industry_assigment.merge(
         firms_to_keep, on="gvkey", how="inner"
     ).merge(firm_info_df[["gvkey", "companyname"]], on="gvkey", how="left")
     return final_portfolio
@@ -337,8 +407,8 @@ def get_portfolio_constitution(portfolio_df: pd.DataFrame) -> pd.DataFrame:
     # Create a new dataframe that tracks the constitution of the portfolio
     final_portfolio_constitution: pd.DataFrame = portfolio_df.drop_duplicates(
         subset="gvkey", keep="last"
-    ).set_index(["sicdescription", "gvkey"])[
-        ["companyname", "market_cap", "close", "sharesoutstanding", "sic_level", "date"]
+    ).set_index(["industry_name", "gvkey"])[
+        ["companyname", "market_cap", "close", "sharesoutstanding", "key", "date"]
     ]
 
     group_totals: pd.Series = final_portfolio_constitution.groupby(level=0)[
@@ -449,9 +519,9 @@ def aggregate_sicportfolio(
         A DataFrame containing the aggregated and sorted SIC portfolios.
     """
     sic_portfolios: pd.DataFrame = (
-        portfolio.groupby("sicdescription")
+        portfolio.groupby("industry_name")
         .agg(
-            sic_level=("sic_level", "first"),
+            key=("key", "first"),
             num_firms=("gvkey", "nunique"),
             total_market_cap=("market_cap", "sum"),
             gvkeys=("gvkey", lambda x: list(x)),
@@ -555,7 +625,7 @@ def calculate_portfolio_returns(
     portfolios_df = portfolios_df.reset_index()
 
     # Initialize the dataframe to store portfolio prices
-    col_names: List[str] = portfolios_df["sicdescription"].drop_duplicates().tolist()
+    col_names: List[str] = portfolios_df["industry_name"].drop_duplicates().tolist()
     portfolio_returns = pd.DataFrame(columns=col_names)
 
     for _, row in portfolios_df.iterrows():
@@ -590,7 +660,7 @@ def calculate_portfolio_returns(
             raise ValueError("Invalid aggregation method.")
 
         # Multiply the returns by the weights and sum them to get the portfolio return
-        portfolio_returns[row["sicdescription"]] = (
+        portfolio_returns[row["industry_name"]] = (
             (prices_and_returns_subset["Weight"] * prices_and_returns_subset["return"])
             .groupby("date")
             .sum()
@@ -632,7 +702,7 @@ def save_portfolio_returns_constitution(
     """
 
     if config.LOG_INFO:
-        config.logger.info("Saving the portfolio returns and constitution details to CSV files..."+ "-"*80)
+        config.logger.info("Saving the portfolio returns and constitution details to CSV files...\n"+ "-"*80)
 
 
     # Save the results
@@ -669,7 +739,7 @@ def create_portfolios_and_returns(
     """
 
     # Dowload the data
-    stock_prices, firm_info, sic_codes, inflation = get_stockprices_firminfo_siccodes_inflation(config)
+    stock_prices, firm_info, sic_codes, inflation, ff_industry_portfolios = get_stockprices_firminfo_siccodes_inflation(config)
 
     if config.LOG_INFO:
         config.logger.info("Starting to create portfolios....\n" + "-"*80)
@@ -686,15 +756,15 @@ def create_portfolios_and_returns(
     else:
         firms_to_keep: pd.DataFrame = apply_marketcap_cutoff_latestperiod(stock_prices, config)
 
-    # Get the main portfolios by industry using the SIC codes
-    indutry_portfolios: pd.DataFrame = compute_industry_portfolios_sic(
-        firm_descr=firm_info, sic_descr=sic_codes, config=config
+    # Assign each firm to an industry
+    firm_industry_assignment: pd.DataFrame = assign_industry_to_firms(
+        firm_descr=firm_info, sic_descr=sic_codes, ff_industry_portfolios= ff_industry_portfolios, config=config
     )
 
     # Add the information about firms and their stock prices
-    industry_portfolios_with_info: pd.DataFrame = (
+    industry_assignment_with_info: pd.DataFrame = (
         intersect_portfolios_price_companyinfo(
-            portfolios_df=indutry_portfolios,
+            industry_assigment=firm_industry_assignment,
             firms_to_keep=firms_to_keep,
             firm_info_df=firm_info,
         )
@@ -702,7 +772,7 @@ def create_portfolios_and_returns(
 
     # Get the constitution of the portfolios
     industry_portfolio_constitution: pd.DataFrame = get_portfolio_constitution(
-        industry_portfolios_with_info
+        industry_assignment_with_info
     )
 
     # Add the sub-portfolios by market cap

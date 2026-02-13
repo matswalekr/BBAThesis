@@ -33,13 +33,19 @@ CONFIG = CONFIGURATION(
     # Data-cleaning configs #
     #########################
     THRESHOLD_MISSING_SHARESOUTSTANDING=0.5,  # Relative threshold of missing sharesoutstanding to drop a ticker
+
+    #######################################
+    # Industry Portfolio creation configs #
+    #######################################
+    INDUSTRY_CLASSIFICATION_METHOD="Fama-French_portfolios", 
+    FAMA_FRENCH_INDUSTRY_PORTFOLIOS="Siccodes48",
+    SIC_LEVEL=2,  # SIC code level to use for industry portfolios. The larger, the more granular.
     ##############################
-    # Portfolio creation configs #
+    # Other portfolio creation configs #
     ##############################
     CUTOFF_FIRMS_PER_PORTFOLIO=10,  # Number of firms needed per portfolio
     MIN_MARKETCAP_FIRM=100_000.0,  # Minimum latest market cap needed for a firm to be considered
     DISCOUNT_MARKETCAP_FIRM_INFLATION = True, # Discount the marketcap of firms. If this is used, then the minimum market cap is in real terms, not nominal and applied to each period.
-    SIC_LEVEL=2,  # SIC code level to use for industry portfolios. The larger, the more granular.
     PORTFOLIO_AGGREGATION_METHOD="MarketCap",  # Method to aggregate firms into portfolios
     ########################
     # Model configurations #
