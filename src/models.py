@@ -45,14 +45,16 @@ def download_processed_data(
     )
 
     if config.LOG_INFO:
-        config.logger.info(
-            "Downloaded processed data successfully")
+        config.logger.info("Downloaded processed data successfully")
 
     return ff_factors_monthly, ff_factors_yearly, portfolio_returns_monthly
 
 
 def extract_factor_loadings(
-    factors: pd.DataFrame, config: CONFIGURATION, returns: Union[pd.Series, pd.DataFrame], rf_label: str = "RF"
+    factors: pd.DataFrame,
+    config: CONFIGURATION,
+    returns: Union[pd.Series, pd.DataFrame],
+    rf_label: str = "RF",
 ) -> pd.DataFrame:
     """
     Function to perform a linear regression for a factor model (e.g., Fama-French 5-Factor Model).
@@ -141,15 +143,15 @@ def extract_factor_loadings(
 
         if config.LOG_INFO:
             config.logger.info(
-                "Extracted factor loadings successfully for multiple stocks")
+                "Extracted factor loadings successfully for multiple stocks"
+            )
         return pd.DataFrame(results)
 
     # Case when working with one stock
-    else:        
+    else:
         if config.LOG_INFO:
-            config.logger.info(
-                "Extracted factor loadings successfully for one stock")
-            
+            config.logger.info("Extracted factor loadings successfully for one stock")
+
         excess_return = returns_aligned - factors_aligned[rf_label]
         return lin_reg(X, excess_return).to_frame(name="Asset")
 
@@ -210,13 +212,14 @@ def factor_model_return_predictor(
         out[ticker] = pred_excess + factor_values[rf_label]
 
     if config.LOG_INFO:
-        config.logger.info(
-            "Predicted returns successfully using the factor model")
+        config.logger.info("Predicted returns successfully using the factor model")
     return pd.DataFrame(out, index=factor_values.index)
 
 
 def compare_pred_actual(
-    pred_return_monthly: pd.DataFrame, portfolio_returns_monthly: pd.DataFrame, config: CONFIGURATION
+    pred_return_monthly: pd.DataFrame,
+    portfolio_returns_monthly: pd.DataFrame,
+    config: CONFIGURATION,
 ) -> pd.DataFrame:
     """
     Function to compare the predicted and actual return and add the residual
@@ -251,9 +254,8 @@ def compare_pred_actual(
     ).sort_index(axis=1)
 
     if config.LOG_INFO:
-        config.logger.info(
-            "Compared predicted and actual returns successfully")
-        
+        config.logger.info("Compared predicted and actual returns successfully")
+
     return comparison_monthly_returns
 
 
@@ -331,9 +333,8 @@ def t_test_significance(
     model_parameters = pd.concat([model_parameters, sig_df])
 
     if config.LOG_INFO:
-        config.logger.info(
-            "Tested the significance of model parameters successfully")
-        
+        config.logger.info("Tested the significance of model parameters successfully")
+
     return model_parameters
 
 
@@ -552,7 +553,7 @@ def factor_loadings_over_time(
                 cast(Any, start_date) : cast(Any, end_date)
             ],  # Cast for typechecker
             rf_label=rf_label,
-            config=config
+            config=config,
         )
         for label, (start_date, end_date) in date_ranges.items()
     }
@@ -567,8 +568,9 @@ def factor_loadings_over_time(
 
     if config.LOG_INFO:
         config.logger.info(
-            "Computed factor loadings for different time periods successfully")
-        
+            "Computed factor loadings for different time periods successfully"
+        )
+
     return outcome
 
 
@@ -603,7 +605,9 @@ def build_model(
 
     # Predict the returns according to the model
     pred_return_monthly: pd.DataFrame = factor_model_return_predictor(
-        factor_values=ff_factors_monthly, factor_loadings=factor_loadings_monthly, config=config
+        factor_values=ff_factors_monthly,
+        factor_loadings=factor_loadings_monthly,
+        config=config,
     )
 
     # Compare predicted and actual
@@ -661,8 +665,7 @@ def save_model(
     )
 
     if config.LOG_INFO:
-        config.logger.info(
-            "Saved model results successfully")
+        config.logger.info("Saved model results successfully")
 
 
 def build_save_model(config: CONFIGURATION) -> None:

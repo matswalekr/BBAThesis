@@ -27,18 +27,20 @@ def inflation_discount(inflation_info: pd.DataFrame, value: float) -> pd.Series:
     return inflation_info["Inflation multiple"] * value
 
 
-def present_value_inflation(inflation_info: pd.DataFrame, values: pd.Series) -> pd.Series:
+def present_value_inflation(
+    inflation_info: pd.DataFrame, values: pd.Series
+) -> pd.Series:
     """
     Function to adjust past prices to their present value based on the inflation discount multiples.
-    
+
     Parameters
     ----------
-    
+
     inflation_info : pd.DataFrame
         DataFrame containing the inflation discount multiples with a datetime index.
     values : pd.Series
         A Series containing the values to be adjusted, indexed by date.
-    
+
     Returns
     -------
     pd.Series
@@ -131,11 +133,10 @@ def _compute_market_cap(
     return df_info[price_column] * df_info[shares_column]
 
 
-def get_market_cap(
-    df_info: pd.DataFrame,
-    config: CONFIGURATION) -> pd.DataFrame:
+def get_market_cap(df_info: pd.DataFrame, config: CONFIGURATION) -> pd.DataFrame:
     """
-    Function to add the market cap and present value market cap of firms to the dataframe."""
+    Function to add the market cap and present value market cap of firms to the dataframe.
+    """
     df_info = df_info.copy()
     df_info["market_cap"] = _compute_market_cap(df_info, "close", "sharesoutstanding")
 
@@ -148,6 +149,7 @@ def get_market_cap(
 
 
 # MarketCap cutoff
+
 
 def _apply_marketcap_cutoff_latestperiod(
     stock_prices: pd.DataFrame, config: CONFIGURATION
@@ -239,11 +241,12 @@ def _apply_marketcap_cutoff_allperiods(
 
 
 def apply_marketcap_cutoff(
-    stock_prices: pd.DataFrame, inflation: pd.DataFrame, config: CONFIGURATION)->pd.DataFrame:
+    stock_prices: pd.DataFrame, inflation: pd.DataFrame, config: CONFIGURATION
+) -> pd.DataFrame:
     """
     Function to apply the market cap cutoff.
     This can either be cutoff on the latest date or across the entire period after discounting for inflation, depending on the configuration.
-    
+
     Parameters
     ----------
     stock_prices : pd.DataFrame
@@ -252,7 +255,7 @@ def apply_marketcap_cutoff(
         DataFrame containing inflation discount multiples with a datetime index.
     config : CONFIGURATION
         Configuration of the project.
-    
+
     Returns
     -------
     pd.DataFrame
@@ -262,14 +265,11 @@ def apply_marketcap_cutoff(
     # Apply market cap cutoff to filter the firms
     if config.DISCOUNT_MARKETCAP_FIRM_INFLATION:
         return _apply_marketcap_cutoff_allperiods(
-            stock_prices=stock_prices, 
-            inflation=inflation,
-            config=config
+            stock_prices=stock_prices, inflation=inflation, config=config
         )
     else:
         return _apply_marketcap_cutoff_latestperiod(
-            stock_prices=stock_prices, 
-            config=config
+            stock_prices=stock_prices, config=config
         )
 
 
@@ -368,7 +368,9 @@ def assign_industry_to_firms_siclevel(
         Dataframe with the gvkey of the firms, the sic level and the corresponding sic code description at the specified level.
     """
     if config.SIC_LEVEL is None:
-        raise ValueError("SIC_LEVEL must be specified when using SIC code level classification.")
+        raise ValueError(
+            "SIC_LEVEL must be specified when using SIC code level classification."
+        )
     # Unpack the config:
     sic_level: Literal[1, 2, 3, 4] = config.SIC_LEVEL
 
@@ -853,13 +855,15 @@ def create_portfolios_and_returns(
         config.logger.info("Starting to create portfolios....\n" + "-" * 80)
 
     # Compute the market cap
-    stock_market_info_marketcap: pd.DataFrame = get_market_cap(data.stock_market_info)
+    stock_market_info_marketcap: pd.DataFrame = get_market_cap(
+        df_info=data.stock_market_info, config=config
+    )
 
     # Cutoff the firms based on their market cap
     firms_to_keep: pd.DataFrame = apply_marketcap_cutoff(
         stock_prices=stock_market_info_marketcap,
         inflation=data.monthly_inflation,
-        config=config
+        config=config,
     )
 
     # Assign each firm to an industry
