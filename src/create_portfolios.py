@@ -27,6 +27,29 @@ def inflation_discount(inflation_info: pd.DataFrame, value: float) -> pd.Series:
     return inflation_info["Inflation multiple"] * value
 
 
+def present_value_inflation(inflation_info: pd.DataFrame, values: pd.Series) -> pd.Series:
+    """
+    Function to adjust past prices to their present value based on the inflation discount multiples.
+    
+    Parameters
+    ----------
+    
+    inflation_info : pd.DataFrame
+        DataFrame containing the inflation discount multiples with a datetime index.
+    values : pd.Series
+        A Series containing the values to be adjusted, indexed by date.
+    
+    Returns
+    -------
+    pd.Series
+        A Series containing the inflation-adjusted values for each date.
+    """
+    inflation_info = inflation_info.copy()
+    values = values.copy()
+    inflation_info = inflation_info.reindex(values.index).fillna(method="ffill")
+    return values / inflation_info["Inflation multiple"]
+
+
 # Import the data
 def download_processed_data(
     config: CONFIGURATION,
@@ -84,8 +107,8 @@ def download_processed_data(
     )
 
 
-# Compute and cutoff MarketCap
-def compute_market_cap(
+# Compute MarketCap
+def _compute_market_cap(
     df_info: pd.DataFrame, price_column: str, shares_column: str
 ) -> pd.Series:
     """
@@ -108,7 +131,25 @@ def compute_market_cap(
     return df_info[price_column] * df_info[shares_column]
 
 
-def apply_marketcap_cutoff_latestperiod(
+def get_market_cap(
+    df_info: pd.DataFrame,
+    config: CONFIGURATION) -> pd.DataFrame:
+    """
+    Function to add the market cap and present value market cap of firms to the dataframe."""
+    df_info = df_info.copy()
+    df_info["market_cap"] = _compute_market_cap(df_info, "close", "sharesoutstanding")
+
+    if config.DISCOUNT_MARKETCAP_FIRM_INFLATION:
+        df_info["market_cap_present_value"] = present_value_inflation(
+            inflation_info=config.monthly_inflation, values=df_info["market_cap"]
+        )
+
+    return df_info
+
+
+# MarketCap cutoff
+
+def _apply_marketcap_cutoff_latestperiod(
     stock_prices: pd.DataFrame, config: CONFIGURATION
 ) -> pd.DataFrame:
     """
@@ -140,13 +181,13 @@ def apply_marketcap_cutoff_latestperiod(
 
     if config.LOG_INFO:
         config.logger.info(
-            f"Applied market cap cutoff of {marketcap_cutoff} to the latest period ({latest_date.date()}). Number of firms after cutoff: {result['gvkey'].nunique()}"
+            f"Applied market cap cutoff of {marketcap_cutoff} to the latest period ({latest_date.date()}). Number of firms dropped: {latest_prices['gvkey'].nunique()-result['gvkey'].nunique()} Number of firms after cutoff: {result['gvkey'].nunique()}"
         )
 
     return result
 
 
-def apply_marketcap_cutoff_allperiods(
+def _apply_marketcap_cutoff_allperiods(
     stock_prices: pd.DataFrame, inflation: pd.DataFrame, config: CONFIGURATION
 ) -> pd.DataFrame:
     """
@@ -191,10 +232,45 @@ def apply_marketcap_cutoff_allperiods(
 
     if config.LOG_INFO:
         config.logger.info(
-            f"Applied market cap cutoff of {min_marketcap} to all periods. Number of firms after cutoff: {filtered_stock_prices['gvkey'].nunique()}"
+            f"Applied market cap cutoff of {min_marketcap} to all periods. Number of firms dropped: {stock_prices['gvkey'].nunique()}. Number of firms after cutoff: {filtered_stock_prices['gvkey'].nunique()}"
         )
 
     return filtered_stock_prices_lastval
+
+
+def apply_marketcap_cutoff(
+    stock_prices: pd.DataFrame, inflation: pd.DataFrame, config: CONFIGURATION)->pd.DataFrame:
+    """
+    Function to apply the market cap cutoff.
+    This can either be cutoff on the latest date or across the entire period after discounting for inflation, depending on the configuration.
+    
+    Parameters
+    ----------
+    stock_prices : pd.DataFrame
+        DataFrame containing stock prices with a datetime index.
+    inflation : pd.DataFrame
+        DataFrame containing inflation discount multiples with a datetime index.
+    config : CONFIGURATION
+        Configuration of the project.
+    
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing only the firms that meet the market cap cutoff according to the configuration.
+    """
+
+    # Apply market cap cutoff to filter the firms
+    if config.DISCOUNT_MARKETCAP_FIRM_INFLATION:
+        return _apply_marketcap_cutoff_allperiods(
+            stock_prices=stock_prices, 
+            inflation=inflation,
+            config=config
+        )
+    else:
+        return _apply_marketcap_cutoff_latestperiod(
+            stock_prices=stock_prices, 
+            config=config
+        )
 
 
 # Create Industry Portfolios
@@ -772,35 +848,25 @@ def create_portfolios_and_returns(
     data: DATAFRAME_CONTAINER = download_processed_data(config)
     if not isinstance(data.monthly_inflation, pd.DataFrame):
         raise ValueError("Inflation data should be a DataFrame.")
-    stock_prices: pd.DataFrame = data.stock_market_info
-    firm_info: pd.DataFrame = data.firm_info
-    sic_codes: pd.DataFrame = data.sic_info
-    inflation: pd.DataFrame = data.monthly_inflation
-    ff_industry_portfolios: pd.DataFrame = data.ff_industry_portfolios
 
     if config.LOG_INFO:
         config.logger.info("Starting to create portfolios....\n" + "-" * 80)
 
     # Compute the market cap
-    stock_prices["market_cap"] = compute_market_cap(
-        stock_prices, "close", "sharesoutstanding"
-    )
+    stock_market_info_marketcap: pd.DataFrame = get_market_cap(data.stock_market_info)
 
-    # Apply market cap cutoff to filter the firms
-    if config.DISCOUNT_MARKETCAP_FIRM_INFLATION:
-        firms_to_keep: pd.DataFrame = apply_marketcap_cutoff_allperiods(
-            stock_prices, inflation, config
-        )
-    else:
-        firms_to_keep= apply_marketcap_cutoff_latestperiod(
-            stock_prices, config
-        )
+    # Cutoff the firms based on their market cap
+    firms_to_keep: pd.DataFrame = apply_marketcap_cutoff(
+        stock_prices=stock_market_info_marketcap,
+        inflation=data.monthly_inflation,
+        config=config
+    )
 
     # Assign each firm to an industry
     firm_industry_assignment: pd.DataFrame = assign_industry_to_firms(
-        firm_descr=firm_info,
-        sic_descr=sic_codes,
-        ff_industry_portfolios=ff_industry_portfolios,
+        firm_descr=data.firm_info,
+        sic_descr=data.sic_info,
+        ff_industry_portfolios=data.ff_industry_portfolios,
         config=config,
     )
 
@@ -809,13 +875,13 @@ def create_portfolios_and_returns(
         intersect_portfolios_price_companyinfo(
             industry_assigment=firm_industry_assignment,
             firms_to_keep=firms_to_keep,
-            firm_info_df=firm_info,
+            firm_info_df=data.firm_info,
         )
     )
 
     # Get the constitution of the portfolios
     industry_portfolio_constitution: pd.DataFrame = get_portfolio_constitution(
-        industry_assignment_with_info
+        portfolio_df=industry_assignment_with_info
     )
 
     # Add the sub-portfolios by market cap
@@ -836,7 +902,7 @@ def create_portfolios_and_returns(
     # Calculate the returns of the portfolios from their constituents
     industry_marketcap_portfolio_returns: pd.DataFrame = calculate_portfolio_returns(
         portfolios_df=industry_marketcap_portfolios_filtered,
-        prices_df=stock_prices,
+        prices_df=data.stock_market_info,
         config=config,
     )
 
