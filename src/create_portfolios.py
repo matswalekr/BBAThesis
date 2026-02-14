@@ -7,7 +7,7 @@ from configs import CONFIG, CONFIGURATION, FILENAMES, DATAFRAME_CONTAINER
 
 
 # utils function to discount values based on inflation
-def inflation_discount(inflation_info: pd.DataFrame, value: float) -> pd.Series:
+def _inflation_discount(inflation_info: pd.DataFrame, value: float) -> pd.Series:
     """
     Function to discount a given value based on the inflation discount multiples.
 
@@ -27,7 +27,7 @@ def inflation_discount(inflation_info: pd.DataFrame, value: float) -> pd.Series:
     return inflation_info["Inflation multiple"] * value
 
 
-def present_value_inflation(
+def _present_value_inflation(
     inflation_info: pd.DataFrame, values: pd.Series
 ) -> pd.Series:
     """
@@ -48,7 +48,7 @@ def present_value_inflation(
     """
     inflation_info = inflation_info.copy()
     values = values.copy()
-    inflation_info = inflation_info.reindex(values.index).fillna(method="ffill")
+    inflation_info = inflation_info.reindex(values.index).ffill()
     return values / inflation_info["Inflation multiple"]
 
 
@@ -133,24 +133,37 @@ def _compute_market_cap(
     return df_info[price_column] * df_info[shares_column]
 
 
-def get_market_cap(df_info: pd.DataFrame, config: CONFIGURATION) -> pd.DataFrame:
+def get_market_cap(stock_prices: pd.DataFrame, inflation: pd.DataFrame, config: CONFIGURATION) -> pd.DataFrame:
     """
     Function to add the market cap and present value market cap of firms to the dataframe.
+
+    Parameters
+    ----------
+
+    stock_prices : pd.DataFrame
+        DataFrame containing stock prices with a datetime index.
+    inflation : pd.DataFrame
+        DataFrame containing the inflation discount multiples with a datetime index.
+    config : CONFIGURATION
+        Configuration of the project.
+    
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing the original stock prices information along with the market cap and present value market cap (if applicable) of each firm.
     """
-    df_info = df_info.copy()
-    df_info["market_cap"] = _compute_market_cap(df_info, "close", "sharesoutstanding")
+    stock_prices = stock_prices.copy()
+    stock_prices["market_cap"] = _compute_market_cap(stock_prices, "close", "sharesoutstanding")
 
     if config.DISCOUNT_MARKETCAP_FIRM_INFLATION:
-        df_info["market_cap_present_value"] = present_value_inflation(
-            inflation_info=config.monthly_inflation, values=df_info["market_cap"]
+        stock_prices["market_cap_present_value"] = _present_value_inflation(
+            inflation_info=inflation, values=stock_prices["market_cap"]
         )
 
-    return df_info
+    return stock_prices
 
 
 # MarketCap cutoff
-
-
 def _apply_marketcap_cutoff_latestperiod(
     stock_prices: pd.DataFrame, config: CONFIGURATION
 ) -> pd.DataFrame:
@@ -171,6 +184,8 @@ def _apply_marketcap_cutoff_latestperiod(
     # Unpack the config:
     marketcap_cutoff: float = config.MIN_MARKETCAP_FIRM
 
+    num_firms_start: int = stock_prices['gvkey'].nunique()
+
     # Get the latest date and corresponding entries
     latest_date: pd.Timestamp = stock_prices.index.max()
     latest_prices: pd.DataFrame = (
@@ -181,9 +196,12 @@ def _apply_marketcap_cutoff_latestperiod(
         latest_prices["market_cap"] >= marketcap_cutoff
     ]
 
+    num_firms_end: int = result['gvkey'].nunique()
+
     if config.LOG_INFO:
         config.logger.info(
-            f"Applied market cap cutoff of {marketcap_cutoff} to the latest period ({latest_date.date()}). Number of firms dropped: {latest_prices['gvkey'].nunique()-result['gvkey'].nunique()} Number of firms after cutoff: {result['gvkey'].nunique()}"
+            f"Applied market cap cutoff of {marketcap_cutoff} to the latest period ({latest_date.date()}).\
+            \nNumber of firms dropped: {num_firms_start - num_firms_end} ({num_firms_start}->{num_firms_end})"
         )
 
     return result
@@ -211,8 +229,10 @@ def _apply_marketcap_cutoff_allperiods(
     # Unpack the config:
     min_marketcap: float = config.MIN_MARKETCAP_FIRM
 
+    num_firms_start: int = stock_prices['gvkey'].nunique()
+
     # Discount the market cap by inflation
-    min_marketcap_discounted: pd.Series = inflation_discount(
+    min_marketcap_discounted: pd.Series = _inflation_discount(
         inflation_info=inflation, value=min_marketcap
     )
 
@@ -232,9 +252,12 @@ def _apply_marketcap_cutoff_allperiods(
         .reset_index()
     )
 
+    num_firms_end: int = filtered_stock_prices_lastval['gvkey'].nunique()
+
     if config.LOG_INFO:
         config.logger.info(
-            f"Applied market cap cutoff of {min_marketcap} to all periods. Number of firms dropped: {stock_prices['gvkey'].nunique()}. Number of firms after cutoff: {filtered_stock_prices['gvkey'].nunique()}"
+            f"Applied market cap cutoff of {min_marketcap} to all periods using inflation discounted values.\
+            \nNumber of firms dropped: {num_firms_start - num_firms_end} ({num_firms_start}->{num_firms_end})"
         )
 
     return filtered_stock_prices_lastval
@@ -274,7 +297,7 @@ def apply_marketcap_cutoff(
 
 
 # Create Industry Portfolios
-def format_sic_codes(
+def _format_sic_codes(
     sic_descr: pd.DataFrame, level: Literal[1, 2, 3, 4], sic_col: str = "siccode"
 ) -> pd.DataFrame:
     """
@@ -312,7 +335,7 @@ def format_sic_codes(
     return df[cond][["sic_level", "sicdescription"]]
 
 
-def format_firms_sic(
+def _format_firms_sic(
     firms_df: pd.DataFrame, level: Literal[1, 2, 3, 4], sic_col: str = "siccode"
 ) -> pd.DataFrame:
     """
@@ -345,7 +368,7 @@ def format_firms_sic(
     return firms
 
 
-def assign_industry_to_firms_siclevel(
+def _assign_industry_to_firms_siclevel(
     firm_descr: pd.DataFrame, sic_descr: pd.DataFrame, config: CONFIGURATION
 ) -> pd.DataFrame:
     """
@@ -375,8 +398,8 @@ def assign_industry_to_firms_siclevel(
     sic_level: Literal[1, 2, 3, 4] = config.SIC_LEVEL
 
     # Format firms and sic codes according to the level
-    firms: pd.DataFrame = format_firms_sic(firm_descr, sic_level)
-    descr: pd.DataFrame = format_sic_codes(sic_descr, sic_level)
+    firms: pd.DataFrame = _format_firms_sic(firm_descr, sic_level)
+    descr: pd.DataFrame = _format_sic_codes(sic_descr, sic_level)
 
     # Merge the two dataframes
     merged = firms.merge(descr, on="sic_level", how="left")
@@ -393,7 +416,7 @@ def assign_industry_to_firms_siclevel(
     return result
 
 
-def assign_industry_firms_ffindustries(
+def _assign_industry_firms_ffindustries(
     firm_descr: pd.DataFrame, ff_industries: pd.DataFrame, config: CONFIGURATION
 ) -> pd.DataFrame:
     """
@@ -457,9 +480,9 @@ def assign_industry_to_firms(
     """
 
     if config.INDUSTRY_CLASSIFICATION_METHOD == "Sic_level":
-        return assign_industry_to_firms_siclevel(firm_descr, sic_descr, config)
+        return _assign_industry_to_firms_siclevel(firm_descr, sic_descr, config)
     else:
-        return assign_industry_firms_ffindustries(
+        return _assign_industry_firms_ffindustries(
             firm_descr, ff_industry_portfolios, config
         )
 
@@ -639,7 +662,7 @@ def aggregate_sicportfolio(
     return sic_portfolios
 
 
-def drop_nonsignicant_portfolios(
+def drop_small_portfolios(
     portfolio_df: pd.DataFrame, config: CONFIGURATION
 ) -> pd.DataFrame:
     """
@@ -657,13 +680,18 @@ def drop_nonsignicant_portfolios(
     pd.DataFrame
         A DataFrame containing only the significant portfolios.
     """
-    min_firms: int = config.CUTOFF_FIRMS_PER_PORTFOLIO
+    min_firms_per_portfolio: int = config.CUTOFF_FIRMS_PER_PORTFOLIO
 
-    result: pd.DataFrame = portfolio_df[portfolio_df["num_firms"] >= min_firms]
+    num_portfolios_start: int = portfolio_df['industry_name'].nunique()
+
+    result: pd.DataFrame = portfolio_df[portfolio_df["num_firms"] >= min_firms_per_portfolio]
+
+    num_portfolios_end: int = result['industry_name'].nunique()
 
     if config.LOG_INFO:
         config.logger.info(
-            f"Dropping non-significant portfolios with less than {min_firms} firms"
+            f"Dropped non-significant portfolios with less than {min_firms_per_portfolio} firms.\
+            \nNumber of portfolios dropped: {num_portfolios_start - num_portfolios_end} ({num_portfolios_start}->{num_portfolios_end})"
         )
 
     return result
@@ -856,7 +884,7 @@ def create_portfolios_and_returns(
 
     # Compute the market cap
     stock_market_info_marketcap: pd.DataFrame = get_market_cap(
-        df_info=data.stock_market_info, config=config
+        stock_prices=data.stock_market_info, inflation=data.monthly_inflation,config=config
     )
 
     # Cutoff the firms based on their market cap
@@ -899,14 +927,14 @@ def create_portfolios_and_returns(
     )
 
     # Drop non-significant portfolios
-    industry_marketcap_portfolios_filtered: pd.DataFrame = drop_nonsignicant_portfolios(
+    industry_marketcap_portfolios_filtered: pd.DataFrame = drop_small_portfolios(
         portfolio_df=industry_marketcap_portfolios_agg, config=config
     )
 
     # Calculate the returns of the portfolios from their constituents
     industry_marketcap_portfolio_returns: pd.DataFrame = calculate_portfolio_returns(
         portfolios_df=industry_marketcap_portfolios_filtered,
-        prices_df=data.stock_market_info,
+        prices_df=stock_market_info_marketcap,
         config=config,
     )
 
