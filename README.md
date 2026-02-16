@@ -24,6 +24,8 @@ The repository is split into 5 main directories:
 - [configs](configs/): The directory where the configurations of the project are defined. These are the only definitions that may be changed when running the project
 - [data](data/): The repository in which the data (raw, processed and portfolio data) is found as .csv files
 - [results](results/): The repository in which the data of the results and plots can be found
+- [sql](sql/): The sql queries to donwload the data from WRDS
+- [logging](logging/): Logs of the project to increase traceability (currently written to the console)
 
 ## Data used
 The data for the project is downloaded from WRDS (Wharton Research Data Services), specifically the compustat library. 
@@ -31,3 +33,8 @@ The data for the project is downloaded from WRDS (Wharton Research Data Services
 Due to licensing restrictions, raw WRDS data is not included in the project. To reproduce the datasets, run [src/download_data.py](src/download_data.py) and [src/data_cleaning.py](src/data_cleaning.py) 
 
 Raw data is processed in the project to fill missing (primarily non-trading days) market information and remove non-significant or non-active firms.
+
+In order to create industry portfolios, the SIC aggregation from Fama-French is used. Different number of portfolios can be chosen in the [configs](configs/)
+
+## AI
+Please note that AI (ChatGPT & copilot) has been used to generate Docstrings in the code
