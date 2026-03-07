@@ -1,48 +1,48 @@
 ,Jarque-Bera,Time-series Homoscedasticity,Levene Test,Ljung Box
-Aircraft,False,True,True,True
-Apparel,True,False,False,True
-Automobiles and Trucks,False,True,False,True
-Banking,False,True,True,True
-Banking - Large Cap,False,True,True,True
-Banking - Small Cap,True,True,True,True
-Business Services,False,False,False,True
-Business Services - Large Cap,False,False,False,True
-Business Services - Small Cap,False,True,False,True
-Chemicals,False,False,True,True
-Communication,False,False,False,True
-Computers,False,True,False,True
-Construction,False,False,False,False
-Construction Materials,False,False,True,False
-Consumer Goods,False,False,False,True
-Electrical Equipment,False,False,False,True
-Electronic Equipment,False,True,False,True
-Electronic Equipment - Large Cap,False,True,False,True
-Electronic Equipment - Small Cap,True,True,True,True
-Entertainment,False,False,False,True
-Food Products,False,True,True,True
-Healthcare,False,True,True,True
-Insurance,False,False,False,True
-Insurance - Large Cap,False,True,False,True
-Insurance - Small Cap,False,False,False,True
-Machinery,False,False,False,True
-Machinery - Large Cap,False,False,True,True
-Machinery - Small Cap,False,True,True,True
-Measuring and Control Equipment,True,False,False,True
-Medical Equipment,False,False,True,True
-Personal Services,False,True,True,True
-Petroleum and Natural Gas,False,False,True,False
-Pharmaceutical Products,True,True,True,True
-Precious Metals,False,False,True,True
-"Restaurants, Hotels, Motels",False,False,False,True
-Retail,False,True,False,True
-Retail - Large Cap,False,True,False,True
-Retail - Small Cap,False,False,False,True
-Steel Works Etc,True,False,True,True
-Trading,False,False,False,True
-Trading - Large Cap,False,False,False,True
-Trading - Small Cap,False,True,True,True
-Transportation,False,False,False,True
-Utilities,False,True,True,True
-Utilities - Large Cap,False,True,True,True
-Utilities - Small Cap,False,True,False,True
-Wholesale,False,False,True,True
+Aircraft,True,False,False,False
+Apparel,False,True,True,False
+Automobiles and Trucks,True,False,True,False
+Banking,True,False,False,False
+Banking - Large Cap,True,False,False,False
+Banking - Small Cap,False,False,False,False
+Business Services,True,True,True,False
+Business Services - Large Cap,True,True,True,False
+Business Services - Small Cap,True,False,True,False
+Chemicals,True,True,False,False
+Communication,True,True,True,False
+Computers,True,False,True,False
+Construction,True,True,True,True
+Construction Materials,True,True,False,True
+Consumer Goods,True,True,True,False
+Electrical Equipment,True,True,True,False
+Electronic Equipment,True,False,True,False
+Electronic Equipment - Large Cap,True,False,True,False
+Electronic Equipment - Small Cap,False,False,False,False
+Entertainment,True,True,True,False
+Food Products,True,False,False,False
+Healthcare,True,False,False,False
+Insurance,True,True,True,False
+Insurance - Large Cap,True,False,True,False
+Insurance - Small Cap,True,True,True,False
+Machinery,True,True,True,False
+Machinery - Large Cap,True,True,False,False
+Machinery - Small Cap,True,False,False,False
+Measuring and Control Equipment,False,True,True,False
+Medical Equipment,True,True,False,False
+Personal Services,True,False,False,False
+Petroleum and Natural Gas,True,True,False,True
+Pharmaceutical Products,False,False,False,False
+Precious Metals,True,True,False,False
+"Restaurants, Hotels, Motels",True,True,True,False
+Retail,True,False,True,False
+Retail - Large Cap,True,False,True,False
+Retail - Small Cap,True,True,True,False
+Steel Works Etc,False,True,False,False
+Trading,True,True,True,False
+Trading - Large Cap,True,True,True,False
+Trading - Small Cap,True,False,False,False
+Transportation,True,True,True,False
+Utilities,True,False,False,False
+Utilities - Large Cap,True,False,False,False
+Utilities - Small Cap,True,False,True,False
+Wholesale,True,True,False,False
