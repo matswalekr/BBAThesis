@@ -1,0 +1,48 @@
+,Jarque-Bera,Time-series Homoscedasticity,Levene Test,Acorr Breusch Godfrey
+Aircraft,False,True,True,True
+Apparel,True,False,False,True
+Automobiles and Trucks,False,True,False,True
+Banking,False,True,True,True
+Banking - Large Cap,False,True,True,True
+Banking - Small Cap,True,True,True,True
+Business Services,False,False,False,True
+Business Services - Large Cap,False,False,False,True
+Business Services - Small Cap,False,True,False,True
+Chemicals,False,False,True,True
+Communication,False,False,False,True
+Computers,False,True,False,True
+Construction,False,False,False,False
+Construction Materials,False,False,True,False
+Consumer Goods,False,False,False,True
+Electrical Equipment,False,False,False,True
+Electronic Equipment,False,True,False,True
+Electronic Equipment - Large Cap,False,True,False,True
+Electronic Equipment - Small Cap,True,True,True,True
+Entertainment,False,False,False,True
+Food Products,False,True,True,True
+Healthcare,False,True,True,True
+Insurance,False,False,False,True
+Insurance - Large Cap,False,True,False,True
+Insurance - Small Cap,False,False,False,True
+Machinery,False,False,False,True
+Machinery - Large Cap,False,False,True,True
+Machinery - Small Cap,False,True,True,True
+Measuring and Control Equipment,True,False,False,True
+Medical Equipment,False,False,True,True
+Personal Services,False,True,True,True
+Petroleum and Natural Gas,False,False,True,False
+Pharmaceutical Products,True,True,True,True
+Precious Metals,False,False,True,True
+"Restaurants, Hotels, Motels",False,False,False,True
+Retail,False,True,False,True
+Retail - Large Cap,False,True,False,True
+Retail - Small Cap,False,False,False,True
+Steel Works Etc,True,False,True,True
+Trading,False,False,False,True
+Trading - Large Cap,False,False,False,True
+Trading - Small Cap,False,True,True,True
+Transportation,False,False,False,True
+Utilities,False,True,True,True
+Utilities - Large Cap,False,True,True,True
+Utilities - Small Cap,False,True,False,True
+Wholesale,False,False,True,True

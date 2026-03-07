@@ -140,13 +140,14 @@ class BasePathConfig:
             return self.get_file(stem=stem, type_=type_, date=date.strftime("%Y-%m-%d"))
 
 
-# Paths for the analysis (only access to model and portfolio datas)
+# Paths for the analysis (only access to model and portfolio data and results)
 @dataclass(frozen=True, slots=True)
 class PATH_ANALYSIS(BasePathConfig):
     PORTFOLIO_DATA_DIR: Path
     # Result directories in the RESULTS_DIR
     RESULT_DATA_DIR: Path
     RESULT_IMAGES_DIR: Path
+    RESULT_TABLES_DIR: Path
     LOGGING_DIR: Path
 
     def get_directory(self, type_: ALLOWED_TYPE) -> Path:
@@ -179,7 +180,6 @@ class PATH_ANALYSIS(BasePathConfig):
 
     def results_read(self, stem: str, date: Optional[dt.datetime] = None) -> Path:
         return self.resolve_path(stem=stem, type_="results", date=date)
-
 
 # Paths for the entire program (all access)
 @dataclass(frozen=True, slots=True)

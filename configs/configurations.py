@@ -1,8 +1,6 @@
 # File for the configurations of the application
 # This are constants that may change depending on the build and are not essential for the core functionality.
 
-import datetime as dt
-
 from .constants import (
     END_PANDEMIC,
     FACTORS_DATA_SOURCE,

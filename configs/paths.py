@@ -15,6 +15,7 @@ ANALYSIS_PATHS = PATH_ANALYSIS(
     # Result directories in the RESULTS_DIR
     RESULT_DATA_DIR=RESULTS_DIR / "data",
     RESULT_IMAGES_DIR=RESULTS_DIR / "images",
+    RESULT_TABLES_DIR=RESULTS_DIR / "tables",
     LOGGING_DIR=PROJECT_ROOT / "logs",
 )
 
